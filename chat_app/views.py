@@ -1,0 +1,242 @@
+from django.shortcuts import render, redirect, get_object_or_404
+from django.http import JsonResponse
+from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view, parser_classes
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.response import Response
+from rest_framework import status
+from .models import Document, Conversation, Message, Automation
+from .forms import DocumentUploadForm
+from .serializers import DocumentSerializer, ConversationSerializer, MessageSerializer, AutomationSerializer
+from .utils.document_processor import process_document
+from .utils.vector_store import VectorStore
+from .utils.llm_service import LLMService
+from .utils.automation_service import AutomationService
+import json
+import os
+
+# Initialize services
+vector_store = VectorStore(settings.VECTOR_STORE_DIR)
+llm_service = LLMService(settings.LLM_MODEL_PATH, settings.LLM_MODEL_NAME)
+# Create a variable to store the AutomationService instance - will be initialized on first use
+automation_service = None
+
+# Helper function to get or create the automation service
+def get_automation_service():
+    global automation_service
+    if automation_service is None:
+        automation_service = AutomationService()
+    return automation_service
+
+def index(request):
+    """Render the main chat interface."""
+    conversations = Conversation.objects.all().order_by('-updated_at')
+    if not conversations.exists():
+        # Create a default conversation if none exists
+        default_conversation = Conversation.objects.create(title="New Conversation")
+        Message.objects.create(
+            conversation=default_conversation,
+            role="system",
+            content="I am an assistant that can help you with documents and trigger automations. Upload documents or start chatting."
+        )
+        conversations = [default_conversation]
+    
+    return render(request, 'chat_app/index.html', {
+        'conversations': conversations,
+        'current_conversation': conversations[0]
+    })
+
+@api_view(['GET', 'POST'])
+def conversations(request):
+    """API endpoint for managing conversations."""
+    if request.method == 'GET':
+        conversations = Conversation.objects.all().order_by('-updated_at')
+        serializer = ConversationSerializer(conversations, many=True)
+        return Response(serializer.data)
+    
+    elif request.method == 'POST':
+        serializer = ConversationSerializer(data=request.data)
+        if serializer.is_valid():
+            conversation = serializer.save()
+            # Add system message
+            Message.objects.create(
+                conversation=conversation,
+                role="system",
+                content="I am an assistant that can help you with documents and trigger automations. Upload documents or start chatting."
+            )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET', 'DELETE'])
+def conversation_detail(request, conversation_id):
+    """API endpoint for individual conversation operations."""
+    try:
+        conversation = Conversation.objects.get(pk=conversation_id)
+    except Conversation.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+    
+    if request.method == 'GET':
+        serializer = ConversationSerializer(conversation)
+        return Response(serializer.data)
+    
+    elif request.method == 'DELETE':
+        conversation.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['GET', 'POST'])
+def messages(request, conversation_id):
+    """API endpoint for messages in a conversation."""
+    try:
+        conversation = Conversation.objects.get(pk=conversation_id)
+    except Conversation.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+    
+    if request.method == 'GET':
+        messages = conversation.messages.all()
+        serializer = MessageSerializer(messages, many=True)
+        return Response(serializer.data)
+    
+    elif request.method == 'POST':
+        # Check if there's a command in the message
+        user_message = request.data.get('content', '')
+        
+        # Create user message
+        user_message_obj = Message.objects.create(
+            conversation=conversation,
+            role='user',
+            content=user_message
+        )
+        
+        # Check for @automation command
+        if '@automation' in user_message.lower():
+            # Handle automation command
+            automation_response = get_automation_service().handle_automation_command(user_message)
+            
+            # Create assistant message with automation response
+            assistant_message = Message.objects.create(
+                conversation=conversation,
+                role='assistant',
+                content=automation_response
+            )
+            
+            # Return both user and assistant messages
+            serializer = MessageSerializer([user_message_obj, assistant_message], many=True)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        # Normal message processing
+        # 1. Search vector store for relevant documents
+        relevant_docs = vector_store.search(user_message, top_k=3)
+        
+        # 2. Format conversation history and context for LLM
+        conversation_history = []
+        for msg in conversation.messages.all().order_by('created_at'):
+            if msg.id != user_message_obj.id:  # Skip the message we just added
+                conversation_history.append({"role": msg.role, "content": msg.content})
+        
+        # 3. Get response from LLM
+        llm_response = llm_service.generate_response(
+            user_message, 
+            conversation_history, 
+            relevant_docs
+        )
+        
+        # 4. Create assistant message
+        assistant_message = Message.objects.create(
+            conversation=conversation,
+            role='assistant',
+            content=llm_response
+        )
+        
+        # Update conversation timestamp
+        conversation.save()  # This will update the updated_at field
+        
+        # Return both user and assistant messages
+        serializer = MessageSerializer([user_message_obj, assistant_message], many=True)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+@api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
+def upload_document(request):
+    """API endpoint for uploading and processing documents."""
+    form = DocumentUploadForm(request.POST, request.FILES)
+    if form.is_valid():
+        document = form.save()
+        
+        # Process document and add to vector store
+        success, content = process_document(document)
+        
+        if success:
+            document.content = content
+            document.save()
+            
+            # Add to vector store
+            vector_id = vector_store.add_document(document.id, document.title, content)
+            document.vector_id = vector_id
+            document.save()
+            
+            serializer = DocumentSerializer(document)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            # Delete document if processing failed
+            document.delete()
+            return Response(
+                {"error": "Failed to process document", "details": content},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    return Response(form.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+def documents(request):
+    """API endpoint to list all uploaded documents."""
+    documents = Document.objects.all().order_by('-uploaded_at')
+    serializer = DocumentSerializer(documents, many=True)
+    return Response(serializer.data)
+
+@api_view(['DELETE'])
+def delete_document(request, document_id):
+    """API endpoint to delete a document and remove it from vector store."""
+    try:
+        document = Document.objects.get(pk=document_id)
+    except Document.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+    
+    # Remove from vector store if it exists there
+    if document.vector_id:
+        vector_store.delete_document(document.vector_id)
+    
+    # Delete the file
+    if document.file and os.path.isfile(document.file.path):
+        os.remove(document.file.path)
+    
+    # Delete the document record
+    document.delete()
+    
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['GET'])
+def automations(request):
+    """API endpoint to list available automations."""
+    automations = Automation.objects.all()
+    serializer = AutomationSerializer(automations, many=True)
+    return Response(serializer.data)
+
+@api_view(['POST'])
+def trigger_automation(request, automation_id):
+    """API endpoint to trigger a specific automation."""
+    try:
+        automation = Automation.objects.get(pk=automation_id)
+    except Automation.DoesNotExist:
+        return Response(
+            {"error": "Automation not found"}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Execute the automation
+    result = get_automation_service().execute_automation(
+        automation.endpoint,
+        automation.parameters,
+        request.data
+    )
+    
+    return Response(result)
