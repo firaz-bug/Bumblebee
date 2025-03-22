@@ -12,6 +12,8 @@ urlpatterns = [
     path('api/documents/', views.documents, name='documents'),
     path('api/documents/upload/', views.upload_document, name='upload_document'),
     path('api/documents/<uuid:document_id>/delete/', views.delete_document, name='delete_document'),
+    path('api/documents/<uuid:document_id>/citation/', views.generate_document_citation, name='generate_document_citation'),
+    path('api/documents/<uuid:document_id>/citations/', views.document_citations, name='document_citations'),
     path('api/automations/', views.automations, name='automations'),
     path('api/automations/<uuid:automation_id>/trigger/', views.trigger_automation, name='trigger_automation'),
     

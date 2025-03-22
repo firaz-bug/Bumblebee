@@ -9,7 +9,7 @@ from rest_framework import status
 from .models import Document, Conversation, Message, Automation
 from .forms import DocumentUploadForm
 from .serializers import DocumentSerializer, ConversationSerializer, MessageSerializer, AutomationSerializer
-from .utils.document_processor import process_document
+from .utils.document_processor import process_document, generate_citation
 from .utils.vector_store import VectorStore
 from .utils.llm_service import LLMService
 from .utils.openai_service import OpenAIService
@@ -303,6 +303,62 @@ def trigger_automation(request, automation_id):
     )
     
     return Response(result)
+
+@api_view(['GET', 'POST'])
+def generate_document_citation(request, document_id):
+    """API endpoint to generate citations for a document."""
+    try:
+        document = Document.objects.get(pk=document_id)
+    except Document.DoesNotExist:
+        return Response(
+            {"error": "Document not found"}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Get citation style from request
+    style = request.GET.get('style', 'apa')
+    if request.method == 'POST' and 'style' in request.data:
+        style = request.data.get('style')
+    
+    # Valid citation styles
+    valid_styles = ['apa', 'mla', 'chicago', 'harvard']
+    if style not in valid_styles:
+        style = 'apa'  # Default to APA if invalid style
+    
+    # Generate citation
+    citation = generate_citation(document, style)
+    
+    return Response({
+        'document_id': str(document.id),
+        'title': document.title,
+        'style': style,
+        'citation': citation
+    })
+
+@api_view(['GET'])
+def document_citations(request, document_id):
+    """Generate all citation styles for a document."""
+    try:
+        document = Document.objects.get(pk=document_id)
+    except Document.DoesNotExist:
+        return Response(
+            {"error": "Document not found"}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Generate citations in all supported styles
+    citations = {
+        'apa': generate_citation(document, 'apa'),
+        'mla': generate_citation(document, 'mla'),
+        'chicago': generate_citation(document, 'chicago'),
+        'harvard': generate_citation(document, 'harvard')
+    }
+    
+    return Response({
+        'document_id': str(document.id),
+        'title': document.title,
+        'citations': citations
+    })
 
 @api_view(['GET'])
 def debug_vector_store(request):
