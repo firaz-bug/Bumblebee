@@ -80,7 +80,7 @@ def conversations(request):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET', 'DELETE'])
+@api_view(['GET', 'DELETE', 'PATCH'])
 def conversation_detail(request, conversation_id):
     """API endpoint for individual conversation operations."""
     try:
@@ -91,6 +91,14 @@ def conversation_detail(request, conversation_id):
     if request.method == 'GET':
         serializer = ConversationSerializer(conversation)
         return Response(serializer.data)
+    
+    elif request.method == 'PATCH':
+        # Update only the fields provided in the request
+        serializer = ConversationSerializer(conversation, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     elif request.method == 'DELETE':
         conversation.delete()
