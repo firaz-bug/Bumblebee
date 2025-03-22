@@ -122,6 +122,7 @@ function createNewConversation() {
     if (isProcessing) return;
     
     isProcessing = true;
+    console.log("Creating new conversation...");
     
     fetch('/api/conversations/', {
         method: 'POST',
@@ -133,10 +134,21 @@ function createNewConversation() {
             title: 'New Conversation'
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
     .then(data => {
+        console.log("New conversation created:", data);
+        
+        // Update the current conversation state
         currentConversationId = data.id;
         chatTitle.textContent = data.title;
+        
+        // Clear chat messages
+        chatMessages.innerHTML = '';
         
         // Update the UI
         loadConversations();
@@ -146,6 +158,7 @@ function createNewConversation() {
     })
     .catch(error => {
         console.error('Error creating conversation:', error);
+        alert('Failed to create a new conversation. Please try again.');
         isProcessing = false;
     });
 }
@@ -390,8 +403,18 @@ function deleteConversation() {
             throw new Error(`HTTP error ${response.status}`);
         }
         
-        // Create a new conversation and switch to it
-        createNewConversation();
+        console.log("Successfully deleted conversation:", currentConversationId);
+        
+        // Reset current conversation ID
+        currentConversationId = null;
+        
+        // Refresh the conversations list
+        loadConversations();
+        
+        // Create a new conversation after a short delay
+        setTimeout(() => {
+            createNewConversation();
+        }, 300);
     })
     .catch(error => {
         console.error('Error deleting conversation:', error);
