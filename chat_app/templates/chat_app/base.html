@@ -14,11 +14,13 @@
             <div class="sidebar-header">
                 <div class="app-title-container">
                     <h1 class="app-title">Chat Assistant</h1>
-                    <button id="theme-toggle-btn" class="icon-btn theme-toggle" title="Toggle dark/light mode">
-                        <i data-feather="moon" class="theme-icon-dark"></i>
-                        <i data-feather="sun" class="theme-icon-light"></i>
-                    </button>
                 </div>
+                <button id="theme-toggle-btn" class="btn theme-toggle-btn" title="Toggle dark/light mode">
+                    <i data-feather="moon" class="theme-icon-dark"></i>
+                    <i data-feather="sun" class="theme-icon-light"></i>
+                    <span class="theme-toggle-text theme-icon-dark">Dark Mode</span>
+                    <span class="theme-toggle-text theme-icon-light">Light Mode</span>
+                </button>
                 <button id="new-chat-btn" class="new-chat-btn">
                     <i data-feather="plus"></i> New Chat
                 </button>
@@ -71,7 +73,6 @@
         </div>
     </div>
     
-    <script src="/static/js/chat.js"></script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>
