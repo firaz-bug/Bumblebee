@@ -265,17 +265,22 @@ function handleDocumentUpload(e) {
     const formData = new FormData();
     formData.append('file', file);
     
-    // Send to server
+    // Send to server - don't include Content-Type header with FormData
     fetch('/api/documents/upload/', {
         method: 'POST',
         headers: {
             'X-CSRFToken': getCSRFToken(),
+            // Let browser set Content-Type with boundary for FormData
         },
-        body: formData
+        body: formData,
+        credentials: 'same-origin' // Include cookies for CSRF
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error(`HTTP error ${response.status}`);
+            return response.text().then(text => {
+                console.error('Upload error details:', text);
+                throw new Error(`HTTP error ${response.status}: ${text}`);
+            });
         }
         return response.json();
     })
