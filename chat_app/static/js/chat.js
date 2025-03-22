@@ -430,6 +430,9 @@ function deleteConversation() {
                 renderConversationsList(data);
             });
     })
+    .then(() => {
+        alert('Conversation deleted successfully');
+    })
     .catch(error => {
         console.error('Error in conversation deletion flow:', error);
         alert('Failed to delete conversation. Please try again.');
