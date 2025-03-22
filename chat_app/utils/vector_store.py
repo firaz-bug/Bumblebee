@@ -41,12 +41,17 @@ class VectorStore:
             if os.path.exists(self.documents_info_path):
                 with open(self.documents_info_path, 'r') as f:
                     self.documents_info = json.load(f)
+                    
+                # Log document info loaded from file
+                doc_count = len(self.documents_info)
+                logger.info(f"Loaded {doc_count} documents info from disk")
             else:
                 self.documents_info = {}
                 # Save empty document info
                 with open(self.documents_info_path, 'w') as f:
                     json.dump(self.documents_info, f)
-            
+                    
+            # Initialize in-memory document store
             self.initialized = True
             logger.info("Using simple in-memory vector store for demonstration")
             
@@ -382,6 +387,57 @@ class VectorStore:
         except Exception as e:
             logger.error(f"Error deleting document from vector store: {str(e)}")
             
+    def _load_documents_from_database(self):
+        """
+        Load all documents from the database into the vector store.
+        This ensures documents are available after server restart.
+        """
+        try:
+            # Import here to avoid circular imports
+            from django.apps import apps
+            Document = apps.get_model('chat_app', 'Document')
+            
+            # Get all documents from database
+            documents = Document.objects.all()
+            doc_count = documents.count()
+            logger.info(f"Loading {doc_count} documents from database into vector store")
+            
+            # Add each document to the vector store
+            for document in documents:
+                if document.content:
+                    # Only add if not already in documents_info
+                    if str(document.id) not in self.documents_info:
+                        logger.info(f"Adding document '{document.title}' to vector store")
+                        self.add_document(str(document.id), document.title, document.content)
+                    else:
+                        # Document info exists, but we need to reload chunks into memory
+                        doc_info = self.documents_info.get(str(document.id))
+                        if doc_info:
+                            # Reload document chunks using the stored info
+                            chunks = self._chunk_text(document.content)
+                            
+                            for i, chunk in enumerate(chunks):
+                                chunk_id = f"{document.id}_{i}"
+                                
+                                # Store chunk in memory
+                                self.documents_by_id[chunk_id] = {
+                                    "content": chunk,
+                                    "metadata": {
+                                        "document_id": str(document.id),
+                                        "title": document.title,
+                                        "chunk": i
+                                    }
+                                }
+                                self.document_texts.append(chunk)
+                            
+                            logger.info(f"Reloaded document '{document.title}' with {len(chunks)} chunks")
+            
+            # Log summary
+            logger.info(f"Loaded {len(self.documents_by_id)} document chunks into vector store")
+            
+        except Exception as e:
+            logger.error(f"Error loading documents from database: {str(e)}")
+    
     def _chunk_text(self, text, chunk_size=1000, overlap=100):
         """
         Split text into chunks for better vector storage and retrieval.

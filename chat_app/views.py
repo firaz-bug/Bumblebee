@@ -27,6 +27,13 @@ automation_service = None
 # Connect OpenAI service to vector store for better embeddings
 vector_store.openai_service = openai_service
 
+# Load documents from database into vector store on startup
+if hasattr(vector_store, '_load_documents_from_database'):
+    try:
+        vector_store._load_documents_from_database()
+    except Exception as e:
+        print(f"Error loading documents into vector store: {str(e)}")
+
 # Helper function to get or create the automation service
 def get_automation_service():
     global automation_service
@@ -296,3 +303,38 @@ def trigger_automation(request, automation_id):
     )
     
     return Response(result)
+
+@api_view(['GET'])
+def debug_vector_store(request):
+    """Debug endpoint to check vector store status."""
+    # Get all documents in the vector store
+    doc_count = len(vector_store.documents_by_id) if hasattr(vector_store, 'documents_by_id') else 0
+    
+    # Get stats about stored documents
+    doc_stats = {}
+    for doc_id, doc_info in vector_store.documents_info.items():
+        doc_stats[doc_id] = {
+            'title': doc_info.get('title', 'Unknown'),
+            'chunks': doc_info.get('chunks', 0),
+            'vector_ids': doc_info.get('vector_ids', [])
+        }
+    
+    # Get sample from documents_by_id
+    sample_docs = {}
+    counter = 0
+    for chunk_id, doc in vector_store.documents_by_id.items():
+        if counter < 3:  # Only show first 3 docs for brevity
+            sample_docs[chunk_id] = {
+                'content_preview': doc['content'][:100] + '...' if len(doc['content']) > 100 else doc['content'],
+                'metadata': doc['metadata']
+            }
+            counter += 1
+    
+    return Response({
+        'vector_store_initialized': vector_store.initialized,
+        'document_count_in_db': Document.objects.count(),
+        'document_chunks_in_vector_store': doc_count,
+        'document_info': doc_stats,
+        'sample_chunks': sample_docs,
+        'openai_service_attached': hasattr(vector_store, 'openai_service') and vector_store.openai_service is not None
+    })
