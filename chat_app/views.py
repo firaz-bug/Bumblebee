@@ -159,32 +159,53 @@ def messages(request, conversation_id):
 @parser_classes([MultiPartParser, FormParser])
 def upload_document(request):
     """API endpoint for uploading and processing documents."""
-    form = DocumentUploadForm(request.POST, request.FILES)
-    if form.is_valid():
-        document = form.save()
+    try:
+        # Print request details for debugging
+        print(f"Upload document request: FILES={request.FILES}, POST={request.POST}")
         
-        # Process document and add to vector store
-        success, content = process_document(document)
-        
-        if success:
-            document.content = content
-            document.save()
-            
-            # Add to vector store
-            vector_id = vector_store.add_document(document.id, document.title, content)
-            document.vector_id = vector_id
-            document.save()
-            
-            serializer = DocumentSerializer(document)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            # Delete document if processing failed
-            document.delete()
+        # Check if file is in the request
+        if 'file' not in request.FILES:
             return Response(
-                {"error": "Failed to process document", "details": content},
+                {"error": "No file found in the request. Please select a file to upload."},
                 status=status.HTTP_400_BAD_REQUEST
             )
-    return Response(form.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        form = DocumentUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            document = form.save()
+            
+            # Process document and add to vector store
+            success, content = process_document(document)
+            
+            if success:
+                document.content = content
+                document.save()
+                
+                # Add to vector store
+                vector_id = vector_store.add_document(str(document.id), document.title, content)
+                document.vector_id = vector_id
+                document.save()
+                
+                serializer = DocumentSerializer(document)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                # Delete document if processing failed
+                document.delete()
+                return Response(
+                    {"error": "Failed to process document", "details": content},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            print(f"Form validation failed: {form.errors}")
+            return Response(form.errors, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        import traceback
+        print(f"Exception in upload_document: {str(e)}")
+        print(traceback.format_exc())
+        return Response(
+            {"error": "An unexpected error occurred", "details": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 @api_view(['GET'])
 def documents(request):
