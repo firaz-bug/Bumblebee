@@ -16,8 +16,10 @@ class Document(models.Model):
         return self.title
 
     def save(self, *args, **kwargs):
-        if not self.title and self.file:
-            self.title = os.path.basename(self.file.name)
+        if self.file:
+            if not self.title:
+                self.title = os.path.basename(self.file.name)
+                
             file_extension = os.path.splitext(self.file.name)[1].lower()
             if file_extension == '.pdf':
                 self.file_type = 'pdf'
@@ -27,6 +29,8 @@ class Document(models.Model):
                 self.file_type = 'text'
             else:
                 self.file_type = 'other'
+                
+            print(f"Saving document: title={self.title}, file_type={self.file_type}, file={self.file.name}")
         super().save(*args, **kwargs)
 
 class Conversation(models.Model):

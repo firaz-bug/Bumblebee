@@ -202,18 +202,36 @@ function handleChatSubmit(e) {
             content: userMessage
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            return response.text().then(text => {
+                console.error('Message error details:', text);
+                throw new Error(`HTTP error ${response.status}: ${text}`);
+            });
+        }
+        return response.json();
+    })
     .then(data => {
         // Remove typing indicator
         if (typingIndicator.parentNode) {
             typingIndicator.parentNode.removeChild(typingIndicator);
         }
         
-        // The response contains both the user message and the assistant's response
-        // We've already added the user message, so we just need the assistant's response
-        const assistantMessage = data.find(msg => msg.role === 'assistant');
-        if (assistantMessage) {
-            addMessageToUI('assistant', assistantMessage.content);
+        console.log('Response data:', data);
+        
+        // The response contains both the user message and the assistant's response(s)
+        // We've already added the user message, so we just need the assistant's response(s)
+        if (Array.isArray(data)) {
+            // Find all assistant messages in the response
+            const assistantMessages = data.filter(msg => msg.role === 'assistant');
+            
+            // Add all assistant messages to UI
+            for (const msg of assistantMessages) {
+                addMessageToUI('assistant', msg.content);
+            }
+        } else if (data.role === 'assistant') {
+            // Handle case where only one message is returned
+            addMessageToUI('assistant', data.content);
         }
         
         isProcessing = false;
