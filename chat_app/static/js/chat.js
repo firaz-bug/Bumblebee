@@ -391,6 +391,7 @@ function deleteConversation() {
     }
     
     isProcessing = true;
+    const deletedId = currentConversationId;
     
     fetch(`/api/conversations/${currentConversationId}/`, {
         method: 'DELETE',
@@ -403,7 +404,7 @@ function deleteConversation() {
             throw new Error(`HTTP error ${response.status}`);
         }
         
-        console.log("Successfully deleted conversation:", currentConversationId);
+        console.log("Successfully deleted conversation:", deletedId);
         
         // Reset current conversation ID
         currentConversationId = null;
@@ -411,21 +412,29 @@ function deleteConversation() {
         // Clear messages
         chatMessages.innerHTML = '';
         
+        // Remove the deleted conversation from the list
+        const deletedElement = document.querySelector(`.conversation-item[data-id="${deletedId}"]`);
+        if (deletedElement) {
+            deletedElement.remove();
+        }
+        
         // Create a new conversation immediately
-        createNewConversation()
-            .then(() => {
-                // Refresh the conversations list after new conversation is created
-                loadConversations();
-                isProcessing = false;
-            })
-            .catch(error => {
-                console.error('Error creating new conversation:', error);
-                isProcessing = false;
+        return createNewConversation();
+    })
+    .then(() => {
+        // Force refresh the conversations list
+        return fetch('/api/conversations/')
+            .then(response => response.json())
+            .then(data => {
+                conversationsData = data;
+                renderConversationsList(data);
             });
     })
     .catch(error => {
-        console.error('Error deleting conversation:', error);
+        console.error('Error in conversation deletion flow:', error);
         alert('Failed to delete conversation. Please try again.');
+    })
+    .finally(() => {
         isProcessing = false;
     });
 }
