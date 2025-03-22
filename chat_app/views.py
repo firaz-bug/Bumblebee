@@ -305,7 +305,7 @@ def trigger_automation(request, automation_id):
     return Response(result)
 
 @api_view(['GET', 'POST'])
-def generate_document_citation(request, document_id):
+def generate_document_citation(request, document_id, style=None):
     """API endpoint to generate citations for a document."""
     try:
         document = Document.objects.get(pk=document_id)
@@ -315,10 +315,11 @@ def generate_document_citation(request, document_id):
             status=status.HTTP_404_NOT_FOUND
         )
     
-    # Get citation style from request
-    style = request.GET.get('style', 'apa')
-    if request.method == 'POST' and 'style' in request.data:
-        style = request.data.get('style')
+    # Get citation style from URL path, request parameters, or default to APA
+    if style is None:
+        style = request.GET.get('style', 'apa')
+        if request.method == 'POST' and 'style' in request.data:
+            style = request.data.get('style')
     
     # Valid citation styles
     valid_styles = ['apa', 'mla', 'chicago', 'harvard']
