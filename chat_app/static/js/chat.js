@@ -311,6 +311,9 @@ function handleDocumentUpload(e) {
         // Reset form
         fileInput.value = '';
         
+        // Reload document list
+        loadDocuments();
+        
         // Close modal after a delay
         setTimeout(() => {
             uploadModal.style.display = 'none';
@@ -449,6 +452,92 @@ function getCSRFToken() {
         ?.split('=')[1];
     
     return cookieValue || '';
+}
+
+// Document list functions
+function loadDocuments() {
+    fetch('/api/documents/')
+        .then(response => response.json())
+        .then(documents => {
+            renderDocumentsList(documents);
+        })
+        .catch(error => {
+            console.error('Error loading documents:', error);
+            document.getElementById('documents-list').innerHTML = 
+                '<div class="loading-documents">Failed to load documents. Please try again.</div>';
+        });
+}
+
+function renderDocumentsList(documents) {
+    const documentsListEl = document.getElementById('documents-list');
+    
+    // Empty the list first
+    documentsListEl.innerHTML = '';
+    
+    if (documents.length === 0) {
+        documentsListEl.innerHTML = '<div class="loading-documents">No documents uploaded yet.</div>';
+        return;
+    }
+    
+    // Add each document to the list
+    documents.forEach(doc => {
+        const docEl = document.createElement('div');
+        docEl.className = 'document-item';
+        docEl.setAttribute('data-id', doc.id);
+        
+        // Get icon based on file type
+        let iconName = 'file-text';
+        if (doc.file_type === 'pdf') {
+            iconName = 'file-text';
+        } else if (doc.file_type === 'word') {
+            iconName = 'file';
+        }
+        
+        docEl.innerHTML = `
+            <div class="document-icon">
+                <i data-feather="${iconName}"></i>
+            </div>
+            <div class="document-title">${doc.title}</div>
+            <div class="document-delete" title="Delete document">
+                <i data-feather="trash-2"></i>
+            </div>
+        `;
+        
+        documentsListEl.appendChild(docEl);
+        
+        // Add event listener for delete button
+        const deleteBtn = docEl.querySelector('.document-delete');
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm('Are you sure you want to delete this document? This action cannot be undone.')) {
+                deleteDocument(doc.id);
+            }
+        });
+    });
+    
+    // Reinitialize Feather icons
+    feather.replace();
+}
+
+function deleteDocument(documentId) {
+    fetch(`/api/documents/${documentId}/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': getCSRFToken(),
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error ${response.status}`);
+        }
+        
+        // Reload documents
+        loadDocuments();
+    })
+    .catch(error => {
+        console.error('Error deleting document:', error);
+        alert('Failed to delete document. Please try again.');
+    });
 }
 
 // Handle modal window outside click to close
