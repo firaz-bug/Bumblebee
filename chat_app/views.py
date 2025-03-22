@@ -12,6 +12,7 @@ from .serializers import DocumentSerializer, ConversationSerializer, MessageSeri
 from .utils.document_processor import process_document
 from .utils.vector_store import VectorStore
 from .utils.llm_service import LLMService
+from .utils.openai_service import OpenAIService
 from .utils.automation_service import AutomationService
 import json
 import os
@@ -19,6 +20,7 @@ import os
 # Initialize services
 vector_store = VectorStore(settings.VECTOR_STORE_DIR)
 llm_service = LLMService(settings.LLM_MODEL_PATH, settings.LLM_MODEL_NAME)
+openai_service = OpenAIService()
 # Create a variable to store the AutomationService instance - will be initialized on first use
 automation_service = None
 
