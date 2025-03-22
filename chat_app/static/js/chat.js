@@ -498,8 +498,13 @@ function renderDocumentsList(documents) {
                 <i data-feather="${iconName}"></i>
             </div>
             <div class="document-title">${doc.title}</div>
-            <div class="document-delete" title="Delete document">
-                <i data-feather="trash-2"></i>
+            <div class="document-actions">
+                <div class="cite-document" title="Generate citation">
+                    <i data-feather="bookmark"></i>
+                </div>
+                <div class="document-delete" title="Delete document">
+                    <i data-feather="trash-2"></i>
+                </div>
             </div>
         `;
         
