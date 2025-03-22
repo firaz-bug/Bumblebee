@@ -95,8 +95,20 @@ class OpenAIService:
                 context = "Here is information that might be relevant to the user's query:\n\n"
                 for i, doc in enumerate(relevant_docs):
                     doc_content = doc.get("content", "")
-                    doc_title = doc.get("metadata", {}).get("title", f"Document {i+1}")
+                    doc_metadata = doc.get("metadata", {})
+                    doc_title = doc_metadata.get("title", f"Document {i+1}")
+                    doc_score = doc.get("relevance_score", 0)
+                    
+                    # Print debug info
+                    print(f"Adding document to context: {doc_title}")
+                    print(f"  Content length: {len(doc_content)} chars")
+                    print(f"  Score: {doc_score}")
+                    
+                    # Add formatted document to context
                     context += f"--- {doc_title} ---\n{doc_content}\n\n"
+                
+                # Print final context summary
+                print(f"Total context length: {len(context)} chars")
             
             # Prepare messages for the API call
             messages = [

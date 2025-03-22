@@ -25,6 +25,8 @@ class VectorStore:
         self.persist_directory = persist_directory
         self.documents_info_path = os.path.join(persist_directory, 'documents_info.json')
         self.initialized = False
+        # This will be set from the outside by views.py
+        self.openai_service = None
         self._initialize_vector_store()
         
     def _initialize_vector_store(self):
@@ -218,29 +220,52 @@ class VectorStore:
             list: List of relevant document chunks with metadata
         """
         try:
-            # Generate embedding for the query
-            query_embedding = self.openai_service.generate_embeddings(query)
-            
-            if not query_embedding:
-                logger.warning("Could not generate embedding for query, falling back to keyword search")
-                return self._basic_keyword_search(query, top_k)
-            
-            # Compare with all documents (in a real system, this would use a vector index)
+            # Log the current state of the documents
+            doc_count = len(self.documents_by_id)
+            logger.info(f"Searching through {doc_count} document chunks for query: '{query}'")
+            if doc_count == 0:
+                logger.warning("No documents found in vector store")
+                return []
+                
+            # For demonstration purposes with limited integration,
+            # we'll enhance the keyword search with better scoring
             results = []
+            query_terms = query.lower().split()
+            
+            # Get all documents and their contents
             for chunk_id, doc in self.documents_by_id.items():
                 content = doc["content"]
                 metadata = doc["metadata"]
                 
-                # Add semantic relevance using OpenAI embeddings
-                # For now, we'll use a simpler approach with keyword matching
-                query_terms = query.lower().split()
+                # Basic relevance scoring enhanced with term frequency
+                score = 0
                 content_lower = content.lower()
                 
-                # Count how many query terms appear in the content
-                score = sum(1 for term in query_terms if term in content_lower)
+                # Count term frequency and give weight to full phrase matches
+                if query.lower() in content_lower:
+                    # Exact phrase match gets a big boost
+                    score += 5
                 
-                # Only include if there's some basic relevance
+                # Count individual term matches with proximity boost
+                term_count = 0
+                for term in query_terms:
+                    if term in content_lower:
+                        term_count += 1
+                        
+                        # Boost score based on term frequency
+                        score += content_lower.count(term)
+                
+                # Boost score if most/all query terms are found
+                if term_count > 0:
+                    coverage_ratio = term_count / len(query_terms)
+                    score += coverage_ratio * 3
+                
+                # Only include if there's some relevance
                 if score > 0:
+                    # Print debug info
+                    logger.info(f"Document '{metadata.get('title', chunk_id)}' matched with score {score}")
+                    
+                    # Add to results
                     results.append((doc, score))
             
             # Sort by score and take top_k
@@ -255,6 +280,9 @@ class VectorStore:
                     "metadata": doc["metadata"],
                     "relevance_score": score
                 })
+            
+            # Log summary
+            logger.info(f"Returning {len(formatted_results)} documents with scores: {[d['relevance_score'] for d in formatted_results]}")
             
             return formatted_results
             

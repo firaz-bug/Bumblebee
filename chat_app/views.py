@@ -133,6 +133,14 @@ def messages(request, conversation_id):
         # 1. Search vector store for relevant documents
         relevant_docs = vector_store.search(user_message, top_k=3)
         
+        # Debug information about documents
+        print(f"Found {len(relevant_docs)} relevant documents for query: {user_message}")
+        for i, doc in enumerate(relevant_docs):
+            print(f"Document {i+1}:")
+            print(f"  Content length: {len(doc.get('content', ''))}")
+            print(f"  Metadata: {doc.get('metadata', {})}")
+            print(f"  Relevance score: {doc.get('relevance_score', 0)}")
+        
         # 2. Format conversation history and context for LLM
         conversation_history = []
         for msg in conversation.messages.all().order_by('created_at'):
@@ -202,9 +210,16 @@ def upload_document(request):
                 document.save()
                 
                 # Add to vector store
+                print(f"Adding document to vector store: {document.title}")
+                print(f"Document content length: {len(content)} characters")
                 vector_id = vector_store.add_document(str(document.id), document.title, content)
                 document.vector_id = vector_id
                 document.save()
+                print(f"Document added to vector store with ID: {vector_id}")
+                
+                # Print vector store stats after upload
+                doc_count = len(vector_store.documents_by_id) if hasattr(vector_store, 'documents_by_id') else 0
+                print(f"Vector store now contains {doc_count} document chunks")
                 
                 serializer = DocumentSerializer(document)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
