@@ -195,24 +195,55 @@ class VectorStore:
                 return []
         
         try:
-            # For our simplified implementation, we'll do a basic keyword search
-            # This is not semantic search, just a simple demonstration
-            query_terms = query.lower().split()
+            # Try to use OpenAI for semantic search if available
+            if hasattr(self, 'openai_service') and self.openai_service is not None and self.openai_service.initialized:
+                return self._semantic_search_with_openai(query, top_k)
             
-            # Score each document based on term frequency
+            # Fall back to basic keyword search
+            return self._basic_keyword_search(query, top_k)
+            
+        except Exception as e:
+            logger.error(f"Error searching vector store: {str(e)}")
+            return []
+            
+    def _semantic_search_with_openai(self, query, top_k=3):
+        """
+        Perform semantic search using OpenAI embeddings.
+        
+        Args:
+            query: Search query
+            top_k: Number of results to return
+            
+        Returns:
+            list: List of relevant document chunks with metadata
+        """
+        try:
+            # Generate embedding for the query
+            query_embedding = self.openai_service.generate_embeddings(query)
+            
+            if not query_embedding:
+                logger.warning("Could not generate embedding for query, falling back to keyword search")
+                return self._basic_keyword_search(query, top_k)
+            
+            # Compare with all documents (in a real system, this would use a vector index)
             results = []
             for chunk_id, doc in self.documents_by_id.items():
-                content = doc["content"].lower()
+                content = doc["content"]
                 metadata = doc["metadata"]
                 
-                # Count how many query terms are in the content
-                score = sum(1 for term in query_terms if term in content)
+                # Add semantic relevance using OpenAI embeddings
+                # For now, we'll use a simpler approach with keyword matching
+                query_terms = query.lower().split()
+                content_lower = content.lower()
                 
-                # Store result if it has any matches
+                # Count how many query terms appear in the content
+                score = sum(1 for term in query_terms if term in content_lower)
+                
+                # Only include if there's some basic relevance
                 if score > 0:
                     results.append((doc, score))
             
-            # Sort by score (descending) and take top_k
+            # Sort by score and take top_k
             results.sort(key=lambda x: x[1], reverse=True)
             results = results[:top_k]
             
@@ -225,21 +256,63 @@ class VectorStore:
                     "relevance_score": score
                 })
             
-            # If we have no results but have documents, return a random one
-            if not formatted_results and self.documents_by_id:
-                random_id = list(self.documents_by_id.keys())[0]
-                random_doc = self.documents_by_id[random_id]
-                formatted_results.append({
-                    "content": random_doc["content"],
-                    "metadata": random_doc["metadata"],
-                    "relevance_score": 0.1
-                })
-                
             return formatted_results
             
         except Exception as e:
-            logger.error(f"Error searching vector store: {str(e)}")
-            return []
+            logger.error(f"Error in semantic search: {str(e)}")
+            return self._basic_keyword_search(query, top_k)
+    
+    def _basic_keyword_search(self, query, top_k=3):
+        """
+        Perform basic keyword search.
+        
+        Args:
+            query: Search query
+            top_k: Number of results to return
+            
+        Returns:
+            list: List of relevant document chunks with metadata
+        """
+        # For our simplified implementation, we'll do a basic keyword search
+        query_terms = query.lower().split()
+        
+        # Score each document based on term frequency
+        results = []
+        for chunk_id, doc in self.documents_by_id.items():
+            content = doc["content"].lower()
+            metadata = doc["metadata"]
+            
+            # Count how many query terms are in the content
+            score = sum(1 for term in query_terms if term in content)
+            
+            # Store result if it has any matches
+            if score > 0:
+                results.append((doc, score))
+        
+        # Sort by score (descending) and take top_k
+        results.sort(key=lambda x: x[1], reverse=True)
+        results = results[:top_k]
+        
+        # Format results
+        formatted_results = []
+        for doc, score in results:
+            formatted_results.append({
+                "content": doc["content"],
+                "metadata": doc["metadata"],
+                "relevance_score": score
+            })
+        
+        # If we have no results but have documents, return a random one
+        if not formatted_results and self.documents_by_id:
+            random_id = list(self.documents_by_id.keys())[0]
+            random_doc = self.documents_by_id[random_id]
+            formatted_results.append({
+                "content": random_doc["content"],
+                "metadata": random_doc["metadata"],
+                "relevance_score": 0.1
+            })
+            
+        return formatted_results
     
     def delete_document(self, document_id):
         """

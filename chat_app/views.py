@@ -18,11 +18,14 @@ import json
 import os
 
 # Initialize services
+openai_service = OpenAIService()
 vector_store = VectorStore(settings.VECTOR_STORE_DIR)
 llm_service = LLMService(settings.LLM_MODEL_PATH, settings.LLM_MODEL_NAME)
-openai_service = OpenAIService()
 # Create a variable to store the AutomationService instance - will be initialized on first use
 automation_service = None
+
+# Connect OpenAI service to vector store for better embeddings
+vector_store.openai_service = openai_service
 
 # Helper function to get or create the automation service
 def get_automation_service():
@@ -136,18 +139,33 @@ def messages(request, conversation_id):
             if msg.id != user_message_obj.id:  # Skip the message we just added
                 conversation_history.append({"role": msg.role, "content": msg.content})
         
-        # 3. Get response from LLM
-        llm_response = llm_service.generate_response(
-            user_message, 
-            conversation_history, 
-            relevant_docs
-        )
+        # 3. Get response - use OpenAI if available, otherwise fall back to local LLM
+        response = None
+        try:
+            # First try using OpenAI service
+            if openai_service.initialized:
+                response = openai_service.generate_chat_response(
+                    user_message,
+                    conversation_history,
+                    relevant_docs
+                )
+        except Exception as e:
+            print(f"Error using OpenAI service: {str(e)}")
+            response = None
+            
+        # If OpenAI failed or not available, use fallback LLM service
+        if response is None:
+            response = llm_service.generate_response(
+                user_message, 
+                conversation_history, 
+                relevant_docs
+            )
         
         # 4. Create assistant message
         assistant_message = Message.objects.create(
             conversation=conversation,
             role='assistant',
-            content=llm_response
+            content=response
         )
         
         # Update conversation timestamp
