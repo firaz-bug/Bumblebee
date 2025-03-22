@@ -472,8 +472,14 @@ function createNewConversation() {
         // Clear chat messages
         chatMessages.innerHTML = '';
         
-        // Load messages for the new conversation
-        return loadMessages(currentConversationId);
+        // Refresh conversations list immediately
+        return fetch('/api/conversations/')
+            .then(response => response.json())
+            .then(conversations => {
+                conversationsData = conversations;
+                renderConversationsList(conversations);
+                return loadMessages(currentConversationId);
+            });
     })
     .finally(() => {
         isProcessing = false;
