@@ -498,13 +498,8 @@ function renderDocumentsList(documents) {
                 <i data-feather="${iconName}"></i>
             </div>
             <div class="document-title">${doc.title}</div>
-            <div class="document-actions">
-                <div class="cite-document" title="Generate citation">
-                    <i data-feather="bookmark"></i>
-                </div>
-                <div class="document-delete" title="Delete document">
-                    <i data-feather="trash-2"></i>
-                </div>
+            <div class="document-delete" title="Delete document">
+                <i data-feather="trash-2"></i>
             </div>
         `;
         
@@ -517,13 +512,6 @@ function renderDocumentsList(documents) {
             if (confirm('Are you sure you want to delete this document? This action cannot be undone.')) {
                 deleteDocument(doc.id);
             }
-        });
-        
-        // Add event listener for citation button
-        const citeBtn = docEl.querySelector('.cite-document');
-        citeBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            openCitationModal(doc.id, doc.title);
         });
     });
     
@@ -559,140 +547,9 @@ window.addEventListener('click', (e) => {
     }
 });
 
-// Handle escape key to close modals
+// Handle escape key to close modal
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        if (uploadModal.style.display === 'block') {
-            uploadModal.style.display = 'none';
-        }
-        if (citationModal.style.display === 'block') {
-            citationModal.style.display = 'none';
-        }
+    if (e.key === 'Escape' && uploadModal.style.display === 'block') {
+        uploadModal.style.display = 'none';
     }
 });
-
-// Citation functionality
-const citationModal = document.getElementById('citation-modal');
-const citationModalClose = document.querySelector('.citation-modal-close');
-const citationDocumentTitle = document.querySelector('.citation-document-title');
-const citationContent = document.querySelector('.citation-content');
-const citationStyleButtons = document.querySelectorAll('.citation-style-btn');
-const copyButton = document.querySelector('.copy-citation');
-const insertButton = document.querySelector('.insert-citation');
-
-let currentDocumentId = null;
-let currentCitationStyle = 'apa';
-let currentCitationText = '';
-
-// Close citation modal when clicking the X
-if (citationModalClose) {
-    citationModalClose.addEventListener('click', () => {
-        citationModal.style.display = 'none';
-    });
-}
-
-// Close citation modal when clicking outside
-window.addEventListener('click', (e) => {
-    if (e.target === citationModal) {
-        citationModal.style.display = 'none';
-    }
-});
-
-// Handle citation style selection
-citationStyleButtons.forEach(button => {
-    button.addEventListener('click', () => {
-        // Remove active class from all buttons
-        citationStyleButtons.forEach(btn => btn.classList.remove('active'));
-        
-        // Add active class to clicked button
-        button.classList.add('active');
-        
-        // Get the citation style
-        const style = button.getAttribute('data-style');
-        currentCitationStyle = style;
-        
-        // Load citation for the selected style
-        if (currentDocumentId) {
-            loadCitation(currentDocumentId, style);
-        }
-    });
-});
-
-// Copy citation to clipboard
-copyButton.addEventListener('click', () => {
-    if (currentCitationText) {
-        navigator.clipboard.writeText(currentCitationText)
-            .then(() => {
-                // Show success feedback
-                copyButton.textContent = 'Copied!';
-                setTimeout(() => {
-                    copyButton.textContent = 'Copy Citation';
-                }, 2000);
-            })
-            .catch(err => {
-                console.error('Failed to copy citation: ', err);
-                alert('Failed to copy citation to clipboard');
-            });
-    }
-});
-
-// Insert citation into chat
-insertButton.addEventListener('click', () => {
-    if (currentCitationText) {
-        // Insert citation into chat input
-        const chatInput = document.getElementById('chat-input');
-        chatInput.value += `\n\nCitation: ${currentCitationText}`;
-        
-        // Adjust height of textarea
-        chatInput.style.height = 'auto';
-        chatInput.style.height = (chatInput.scrollHeight) + 'px';
-        
-        // Close the modal
-        citationModal.style.display = 'none';
-        
-        // Focus the chat input
-        chatInput.focus();
-    }
-});
-
-function openCitationModal(documentId, title) {
-    // Set current document
-    currentDocumentId = documentId;
-    
-    // Set document title in modal
-    citationDocumentTitle.textContent = title;
-    
-    // Show loading state
-    citationContent.innerHTML = '<div class="citation-loading">Loading citation...</div>';
-    
-    // Display the modal
-    citationModal.style.display = 'block';
-    
-    // Load the citation
-    loadCitation(documentId, currentCitationStyle);
-}
-
-function loadCitation(documentId, style) {
-    // Show loading state
-    citationContent.innerHTML = '<div class="citation-loading">Loading citation...</div>';
-    
-    // Fetch citation
-    fetch(`/api/documents/${documentId}/citations/${style}/`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            // Store the citation text
-            currentCitationText = data.citation;
-            
-            // Update the citation content
-            citationContent.textContent = data.citation;
-        })
-        .catch(error => {
-            console.error('Error loading citation:', error);
-            citationContent.innerHTML = '<div class="citation-error">Failed to load citation. Please try again.</div>';
-        });
-}
