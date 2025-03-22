@@ -1,5 +1,5 @@
 :root {
-    /* Color variables */
+    /* Light theme (default) */
     --color-bg: #ffffff;
     --color-text: #333333;
     --color-primary: #4a6ee0;
@@ -12,6 +12,9 @@
     --color-hover: #f0f0f0;
     --color-error: #dc3545;
     --color-success: #28a745;
+    --color-modal-bg: #ffffff;
+    --color-input-bg: #ffffff;
+    --color-shadow: rgba(0, 0, 0, 0.1);
     
     /* Spacing */
     --spacing-xs: 0.25rem;
@@ -35,6 +38,25 @@
     /* Transitions */
     --transition-fast: 0.15s ease;
     --transition-normal: 0.3s ease;
+}
+
+/* Dark theme */
+[data-theme="dark"] {
+    --color-bg: #1a1a1a;
+    --color-text: #e0e0e0;
+    --color-primary: #5d82f3;
+    --color-secondary: #8c96a0;
+    --color-accent: #2a3546;
+    --color-border: #444444;
+    --color-sidebar-bg: #252525;
+    --color-user-message-bg: #2a2a2a;
+    --color-assistant-message-bg: #252525;
+    --color-hover: #333333;
+    --color-error: #e05260;
+    --color-success: #43c16b;
+    --color-modal-bg: #252525;
+    --color-input-bg: #2a2a2a;
+    --color-shadow: rgba(0, 0, 0, 0.3);
 }
 
 /* Reset and base styles */
@@ -145,7 +167,7 @@ button, input, textarea {
     padding: var(--spacing-sm) var(--spacing-md);
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-sm);
-    background-color: white;
+    background-color: var(--color-input-bg);
     cursor: pointer;
     transition: background-color var(--transition-fast);
 }
@@ -205,7 +227,7 @@ button, input, textarea {
     padding: var(--spacing-sm) var(--spacing-md);
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-sm);
-    background-color: white;
+    background-color: var(--color-input-bg);
     cursor: pointer;
     transition: background-color var(--transition-fast);
 }
@@ -299,7 +321,7 @@ button, input, textarea {
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-lg);
     padding: var(--spacing-sm) var(--spacing-md);
-    background-color: white;
+    background-color: var(--color-input-bg);
 }
 
 #chat-input {
@@ -356,13 +378,13 @@ button, input, textarea {
 }
 
 .modal-content {
-    background-color: white;
+    background-color: var(--color-modal-bg);
     margin: 10% auto;
     padding: var(--spacing-lg);
     border-radius: var(--border-radius-md);
     width: 90%;
     max-width: 500px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px var(--color-shadow);
 }
 
 .modal-close {
