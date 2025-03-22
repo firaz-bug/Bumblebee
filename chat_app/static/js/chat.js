@@ -520,7 +520,7 @@ function renderDocumentsList(documents) {
 }
 
 function deleteDocument(documentId) {
-    fetch(`/api/documents/${documentId}/`, {
+    fetch(`/api/documents/${documentId}/delete/`, {
         method: 'DELETE',
         headers: {
             'X-CSRFToken': getCSRFToken(),
