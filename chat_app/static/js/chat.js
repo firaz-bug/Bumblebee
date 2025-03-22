@@ -35,6 +35,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load all conversations for the sidebar
     loadConversations();
     
+    // Load documents for the sidebar
+    loadDocuments();
+    
     // Setup auto-resize for textarea
     setupTextareaAutoResize();
 });

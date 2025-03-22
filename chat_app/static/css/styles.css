@@ -485,6 +485,67 @@ button, input, textarea {
     }
 }
 
+/* Documents List Styles */
+.documents-list-container {
+    margin-top: 20px;
+    padding: 0 15px;
+}
+
+.documents-list-container h3 {
+    font-size: 16px;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.documents-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.document-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 5px;
+    margin-bottom: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.document-item:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.document-icon {
+    margin-right: 8px;
+    color: #6c63ff;
+}
+
+.document-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.document-delete {
+    color: #ff5252;
+    visibility: hidden;
+    cursor: pointer;
+}
+
+.document-item:hover .document-delete {
+    visibility: visible;
+}
+
+.loading-documents {
+    font-size: 14px;
+    color: #888;
+    text-align: center;
+    padding: 10px;
+}
+
 /* Responsive Styles */
 @media (max-width: 768px) {
     .app-container {
