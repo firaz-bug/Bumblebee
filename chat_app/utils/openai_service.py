@@ -135,7 +135,7 @@ Be concise, helpful, and accurate."""
             # Call the OpenAI chat completion API
             # the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
             response = self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=messages,
                 temperature=0.7,
                 max_tokens=500
