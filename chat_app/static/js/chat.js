@@ -408,17 +408,65 @@ function deleteConversation() {
         // Reset current conversation ID
         currentConversationId = null;
         
-        // Refresh the conversations list
-        loadConversations();
+        // Clear messages
+        chatMessages.innerHTML = '';
         
-        // Create a new conversation after a short delay
-        setTimeout(() => {
-            createNewConversation();
-        }, 300);
+        // Create a new conversation immediately
+        createNewConversation()
+            .then(() => {
+                // Refresh the conversations list after new conversation is created
+                loadConversations();
+                isProcessing = false;
+            })
+            .catch(error => {
+                console.error('Error creating new conversation:', error);
+                isProcessing = false;
+            });
     })
     .catch(error => {
         console.error('Error deleting conversation:', error);
         alert('Failed to delete conversation. Please try again.');
+        isProcessing = false;
+    });
+}
+
+// Make createNewConversation return a promise
+function createNewConversation() {
+    if (isProcessing) return Promise.reject('Processing in progress');
+    
+    isProcessing = true;
+    console.log("Creating new conversation...");
+    
+    return fetch('/api/conversations/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken(),
+        },
+        body: JSON.stringify({
+            title: 'New Conversation'
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log("New conversation created:", data);
+        
+        // Update the current conversation state
+        currentConversationId = data.id;
+        chatTitle.textContent = data.title;
+        
+        // Clear chat messages
+        chatMessages.innerHTML = '';
+        
+        // Load messages for the new conversation
+        return loadMessages(currentConversationId);
+    })
+    .finally(() => {
         isProcessing = false;
     });
 }
