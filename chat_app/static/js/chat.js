@@ -384,7 +384,15 @@ function renameConversation() {
 }
 
 function deleteConversation() {
-    if (isProcessing || !currentConversationId) return;
+    if (!currentConversationId) {
+        console.log('No conversation selected');
+        return;
+    }
+    
+    if (isProcessing) {
+        console.log('Already processing a request');
+        return;
+    }
     
     if (!confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
         return;
@@ -432,7 +440,6 @@ function deleteConversation() {
     })
     .catch(error => {
         console.error('Error in conversation deletion flow:', error);
-        alert('Failed to delete conversation. Please try again.');
     })
     .finally(() => {
         isProcessing = false;
