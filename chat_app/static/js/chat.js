@@ -417,14 +417,16 @@ function deleteConversation() {
         // Reset current conversation ID
         currentConversationId = null;
         
-        // Clear messages
+        // Clear messages and title
         chatMessages.innerHTML = '';
+        chatTitle.textContent = '';
         
-        // Remove the deleted conversation from the list
+        // Remove the deleted conversation from the list and data
         const deletedElement = document.querySelector(`.conversation-item[data-id="${deletedId}"]`);
         if (deletedElement) {
             deletedElement.remove();
         }
+        conversationsData = conversationsData.filter(conv => conv.id !== deletedId);
         
         // Create a new conversation immediately
         return createNewConversation();
