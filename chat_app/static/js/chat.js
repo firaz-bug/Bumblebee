@@ -12,7 +12,6 @@ const renameChatBtn = document.getElementById('rename-chat-btn');
 const deleteChatBtn = document.getElementById('delete-chat-btn');
 const chatTitle = document.getElementById('current-chat-title');
 const conversationsList = document.querySelector('.conversations-list');
-const themeToggleBtn = document.getElementById('theme-toggle-btn');
 
 // State
 let currentConversationId = null;
@@ -41,9 +40,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Setup auto-resize for textarea
     setupTextareaAutoResize();
-    
-    // Initialize theme
-    initializeTheme();
 });
 
 // Event Listeners
@@ -557,38 +553,3 @@ document.addEventListener('keydown', (e) => {
         uploadModal.style.display = 'none';
     }
 });
-
-// Theme functions
-function initializeTheme() {
-    // Check if theme is stored in localStorage
-    const storedTheme = localStorage.getItem('theme');
-    // Check if user has a system preference
-    const prefersDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    // Set initial theme based on stored preference or system preference
-    if (storedTheme) {
-        document.documentElement.setAttribute('data-theme', storedTheme);
-    } else if (prefersDarkMode) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-        localStorage.setItem('theme', 'dark');
-    } else {
-        document.documentElement.setAttribute('data-theme', 'light');
-        localStorage.setItem('theme', 'light');
-    }
-    
-    // Add event listener to theme toggle button
-    if (themeToggleBtn) {
-        themeToggleBtn.addEventListener('click', toggleTheme);
-    }
-}
-
-function toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-    
-    // Update theme attribute
-    document.documentElement.setAttribute('data-theme', newTheme);
-    
-    // Store preference in localStorage
-    localStorage.setItem('theme', newTheme);
-}

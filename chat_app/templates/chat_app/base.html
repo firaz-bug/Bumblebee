@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,15 +12,7 @@
     <div class="app-container">
         <aside class="sidebar">
             <div class="sidebar-header">
-                <div class="app-title-container">
-                    <h1 class="app-title">Chat Assistant</h1>
-                </div>
-                <button id="theme-toggle-btn" class="btn theme-toggle-btn" title="Toggle dark/light mode">
-                    <i data-feather="moon" class="theme-icon-dark"></i>
-                    <i data-feather="sun" class="theme-icon-light"></i>
-                    <span class="theme-toggle-text theme-icon-dark">Dark Mode</span>
-                    <span class="theme-toggle-text theme-icon-light">Light Mode</span>
-                </button>
+                <h1 class="app-title">Chat Assistant</h1>
                 <button id="new-chat-btn" class="new-chat-btn">
                     <i data-feather="plus"></i> New Chat
                 </button>
@@ -73,6 +65,12 @@
         </div>
     </div>
     
+    <script>
+        // Initialize Feather icons
+        document.addEventListener('DOMContentLoaded', () => {
+            feather.replace();
+        });
+    </script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>
