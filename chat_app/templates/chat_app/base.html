@@ -12,7 +12,13 @@
     <div class="app-container">
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h1 class="app-title">Chat Assistant</h1>
+                <div class="app-title-container">
+                    <h1 class="app-title">Chat Assistant</h1>
+                    <button id="theme-toggle-btn" class="icon-btn theme-toggle" title="Toggle dark/light mode">
+                        <i data-feather="moon" class="theme-icon-dark"></i>
+                        <i data-feather="sun" class="theme-icon-light"></i>
+                    </button>
+                </div>
                 <button id="new-chat-btn" class="new-chat-btn">
                     <i data-feather="plus"></i> New Chat
                 </button>
@@ -66,10 +72,42 @@
     </div>
     
     <script>
-        // Initialize Feather icons
+        // Initialize Feather icons and theme
         document.addEventListener('DOMContentLoaded', () => {
             feather.replace();
+            initializeTheme();
         });
+
+        // Theme management
+        function initializeTheme() {
+            const themeToggleBtn = document.getElementById('theme-toggle-btn');
+            
+            // Check for saved theme preference or use system preference
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            // Apply theme based on saved preference or system preference
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+            
+            // Add event listener for theme toggle
+            themeToggleBtn.addEventListener('click', toggleTheme);
+        }
+        
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            // Update theme attribute and save preference
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            // Update icons to match current theme
+            feather.replace();
+        }
     </script>
     {% block extra_scripts %}{% endblock %}
 </body>
