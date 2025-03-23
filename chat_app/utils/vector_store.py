@@ -358,31 +358,30 @@ class VectorStore:
             self._initialize_vector_store()
             if not self.initialized:
                 return
-        
-        try:
-            # Get document info
-            doc_info = self.documents_info.get(str(document_id))
-            if not doc_info:
-                logger.warning(f"Document {document_id} not found in vector store")
-                return
-                
-            # Delete chunks from in-memory storage
-            for chunk_id in doc_info.get("vector_ids", []):
-                if chunk_id in self.documents_by_id:
-                    # Remove from document texts list
-                    content = self.documents_by_id[chunk_id]["content"]
-                    if content in self.document_texts:
-                        self.document_texts.remove(content)
-                    
-                    # Remove from documents_by_id
-                    del self.documents_by_id[chunk_id]
             
-            # Remove from documents_info
-            if str(document_id) in self.documents_info:
-                del self.documents_info[str(document_id)]
-                
+        try:
+            document_id = str(document_id)
+            logger.info(f"Deleting document {document_id} from vector store")
+            
+            # Clear document chunks from memory
+            chunk_ids_to_remove = []
+            for chunk_id, doc in self.documents_by_id.items():
+                if doc["metadata"]["document_id"] == document_id:
+                    chunk_ids_to_remove.append(chunk_id)
+                    if doc["content"] in self.document_texts:
+                        self.document_texts.remove(doc["content"])
+            
+            for chunk_id in chunk_ids_to_remove:
+                del self.documents_by_id[chunk_id]
+            
+            # Remove from documents_info and save
+            if document_id in self.documents_info:
+                del self.documents_info[document_id]
+                os.makedirs(os.path.dirname(self.documents_info_path), exist_ok=True)
                 with open(self.documents_info_path, 'w') as f:
                     json.dump(self.documents_info, f)
+                    
+            logger.info(f"Successfully deleted document {document_id} and {len(chunk_ids_to_remove)} chunks")
                     
         except Exception as e:
             logger.error(f"Error deleting document from vector store: {str(e)}")
