@@ -674,11 +674,12 @@ function loadIncidents() {
 
 function renderIncidentsList(incidents) {
     const incidentsListEl = document.getElementById('incidents-list');
+    if (!incidentsListEl) return;
     
     // Empty the list first
     incidentsListEl.innerHTML = '';
     
-    if (incidents.length === 0) {
+    if (!incidents || incidents.length === 0) {
         incidentsListEl.innerHTML = '<div class="loading-incidents">No incidents reported yet.</div>';
         return;
     }
@@ -708,6 +709,8 @@ function renderIncidentsList(incidents) {
             <div class="incident-title">${incident.title}</div>
             <div class="incident-status ${statusClass}">${statusDisplay}</div>
         `;
+        
+        incidentsListEl.appendChild(incidentEl);
         
         incidentsListEl.appendChild(incidentEl);
         
