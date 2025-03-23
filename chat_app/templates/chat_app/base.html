@@ -7,9 +7,43 @@
     <link rel="stylesheet" href="/static/css/styles.css">
     <!-- Feather icons -->
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <style>
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .incidents-column {
+            width: 20%;
+        }
+
+        .empty-space {
+            width: 30%;
+        }
+
+        .main-content {
+            width: 50%;
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
+        <aside class="incidents-column">
+            <div class="incidents-header">
+                <h1 class="incidents-title">Incidents</h1>
+            </div>
+            <div id="incidents-list" class="incidents-list">
+                <!-- Incidents will be loaded here -->
+                <div class="loading-incidents">Loading incidents...</div>
+            </div>
+        </aside>
+
+        <div class="empty-space"></div>
+
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+
         <aside class="sidebar">
             <div class="sidebar-header">
                 <h1 class="app-title">Chat Assistant</h1>
@@ -39,21 +73,7 @@
                 </button>
             </div>
         </aside>
-        
-        <main class="main-content">
-            {% block content %}{% endblock %}
-        </main>
-        
-        <aside class="incidents-column">
-            <div class="incidents-header">
-                <h1 class="incidents-title">Incidents</h1>
-            </div>
-            <div id="incidents-list" class="incidents-list">
-                <!-- Incidents will be loaded here -->
-                <div class="loading-incidents">Loading incidents...</div>
-            </div>
-        </aside>
-        
+
         <!-- Upload Document Modal -->
         <div id="upload-modal" class="modal">
             <div class="modal-content">
@@ -74,7 +94,7 @@
             </div>
         </div>
     </div>
-    
+
     <script>
         // Initialize Feather icons
         document.addEventListener('DOMContentLoaded', () => {
