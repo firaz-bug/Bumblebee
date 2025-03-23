@@ -692,10 +692,14 @@ function renderIncidentsList(incidents) {
         
         // Determine severity class and icon
         let severityClass = 'medium';
+        let severityIcon = 'alert-triangle';
+        
         if (incident.severity === 'high') {
             severityClass = 'high';
+            severityIcon = 'alert-circle';
         } else if (incident.severity === 'low') {
             severityClass = 'low';
+            severityIcon = 'alert-octagon';
         }
         
         // Format status for display
@@ -704,15 +708,11 @@ function renderIncidentsList(incidents) {
         
         incidentEl.innerHTML = `
             <div class="incident-icon ${severityClass}">
-                <i data-feather="alert-circle"></i>
+                <i data-feather="${severityIcon}"></i>
             </div>
             <div class="incident-title">${incident.title}</div>
             <div class="incident-status ${statusClass}">${statusDisplay}</div>
         `;
-        
-        incidentsListEl.appendChild(incidentEl);
-        
-        incidentsListEl.appendChild(incidentEl);
         
         // Add click event to show incident details
         incidentEl.addEventListener('click', () => {
