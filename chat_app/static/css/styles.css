@@ -112,6 +112,15 @@ button, input, textarea {
     width: 100%;
 }
 
+.incidents-column {
+    width: 300px;
+    background-color: var(--color-sidebar-bg);
+    border-right: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
 .sidebar {
     width: 280px;
     background-color: var(--color-sidebar-bg);
@@ -125,15 +134,6 @@ button, input, textarea {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-}
-
-.incidents-column {
-    width: 300px;
-    background-color: var(--color-sidebar-bg);
-    border-left: 1px solid var(--color-border);
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
 }
 
 /* Sidebar styles */
