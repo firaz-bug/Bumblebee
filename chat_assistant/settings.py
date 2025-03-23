@@ -18,7 +18,9 @@ ALLOWED_HOSTS = ['0.0.0.0', 'localhost', '127.0.0.1', '.replit.dev', '.repl.co',
 CSRF_TRUSTED_ORIGINS = [
     'https://*.replit.dev',
     'https://*.repl.co',
-    'https://*.sisko.replit.dev'
+    'https://*.sisko.replit.dev',
+    'https://*.*.replit.dev',
+    'https://*.*.repl.co'
 ]
 
 
