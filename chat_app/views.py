@@ -6,9 +6,9 @@ from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Document, Conversation, Message, Automation
+from .models import Document, Conversation, Message, Automation, Incident
 from .forms import DocumentUploadForm
-from .serializers import DocumentSerializer, ConversationSerializer, MessageSerializer, AutomationSerializer
+from .serializers import DocumentSerializer, ConversationSerializer, MessageSerializer, AutomationSerializer, IncidentSerializer
 from .utils.document_processor import process_document
 from .utils.vector_store import VectorStore
 from .utils.llm_service import LLMService
@@ -345,3 +345,40 @@ def debug_vector_store(request):
         'sample_chunks': sample_docs,
         'openai_service_attached': hasattr(vector_store, 'openai_service') and vector_store.openai_service is not None
     })
+@api_view(['GET', 'POST'])
+def incidents(request):
+    """API endpoint for listing and creating incidents."""
+    if request.method == 'GET':
+        incidents = Incident.objects.all().order_by('-created_at')
+        serializer = IncidentSerializer(incidents, many=True)
+        return Response(serializer.data)
+    
+    elif request.method == 'POST':
+        serializer = IncidentSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET', 'PUT', 'DELETE'])
+def incident_detail(request, incident_id):
+    """API endpoint for retrieving, updating and deleting incidents."""
+    try:
+        incident = Incident.objects.get(pk=incident_id)
+    except Incident.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+    
+    if request.method == 'GET':
+        serializer = IncidentSerializer(incident)
+        return Response(serializer.data)
+    
+    elif request.method == 'PUT':
+        serializer = IncidentSerializer(incident, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    elif request.method == 'DELETE':
+        incident.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
