@@ -346,6 +346,7 @@ def debug_vector_store(request):
         'openai_service_attached': hasattr(vector_store, 'openai_service') and vector_store.openai_service is not None
     })
 @api_view(['GET', 'POST'])
+@csrf_exempt
 def incidents(request):
     """API endpoint for listing and creating incidents."""
     if request.method == 'GET':
