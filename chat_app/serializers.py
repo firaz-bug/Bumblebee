@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Document, Conversation, Message, Automation
+from .models import Document, Conversation, Message, Automation, Incident
 
 class DocumentSerializer(serializers.ModelSerializer):
     class Meta:

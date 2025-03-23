@@ -4,7 +4,7 @@ modules = ["python-3.11", "nodejs-20"]
 channel = "stable-24_05"
 
 [workflows]
-runButton = "Project"
+runButton = "Django Server"
 
 [[workflows.workflow]]
 name = "Project"
@@ -29,6 +29,15 @@ task = "packager.installForAll"
 task = "shell.exec"
 args = "pip install django djangorestframework requests && python manage.py migrate && python manage.py runserver 0.0.0.0:5000"
 waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Django Server"
+author = 39428613
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python manage.py runserver 0.0.0.0:3000"
 
 [deployment]
 run = ["sh", "-c", "pip install django djangorestframework requests && python manage.py migrate && python manage.py runserver 0.0.0.0:5000"]
