@@ -127,11 +127,16 @@ button, input, textarea {
 }
 
 .sidebar {
-    display: none;
+    width: 280px;
+    background-color: var(--color-sidebar-bg);
+    border-right: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    order: 3;
 }
 
 .main-content {
-    width: 50%;
+    width: 40%;
     overflow: hidden;
     display: flex;
     flex-direction: column;
