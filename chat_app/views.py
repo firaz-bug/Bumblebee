@@ -272,9 +272,8 @@ def delete_document(request, document_id):
     except Document.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
     
-    # Remove from vector store if it exists there
-    if document.vector_id:
-        vector_store.delete_document(document.vector_id)
+    # Remove from vector store using document ID
+    vector_store.delete_document(str(document.id))
     
     # Delete the file
     if document.file and os.path.isfile(document.file.path):
