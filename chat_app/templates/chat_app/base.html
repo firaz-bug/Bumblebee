@@ -33,13 +33,6 @@
                     <div class="loading-documents">Loading documents...</div>
                 </div>
             </div>
-            <div class="incidents-list-container">
-                <h3>Incidents</h3>
-                <div id="incidents-list" class="incidents-list">
-                    <!-- Incidents will be loaded here -->
-                    <div class="loading-incidents">Loading incidents...</div>
-                </div>
-            </div>
             <div class="sidebar-footer">
                 <button id="upload-document-btn" class="upload-btn">
                     <i data-feather="upload"></i> Upload Document
@@ -50,6 +43,16 @@
         <main class="main-content">
             {% block content %}{% endblock %}
         </main>
+        
+        <aside class="incidents-column">
+            <div class="incidents-header">
+                <h1 class="incidents-title">Incidents</h1>
+            </div>
+            <div id="incidents-list" class="incidents-list">
+                <!-- Incidents will be loaded here -->
+                <div class="loading-incidents">Loading incidents...</div>
+            </div>
+        </aside>
         
         <!-- Upload Document Modal -->
         <div id="upload-modal" class="modal">
