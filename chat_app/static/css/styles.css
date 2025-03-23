@@ -113,6 +113,7 @@ button, input, textarea {
 }
 
 .incidents-column {
+    order: -1;
     width: 300px;
     background-color: var(--color-sidebar-bg);
     border-right: 1px solid var(--color-border);
