@@ -14,6 +14,8 @@ urlpatterns = [
     path('api/documents/<uuid:document_id>/delete/', views.delete_document, name='delete_document'),
     path('api/automations/', views.automations, name='automations'),
     path('api/automations/<uuid:automation_id>/trigger/', views.trigger_automation, name='trigger_automation'),
+    path('api/datasources/', views.datasources, name='datasources'),
+    path('api/datasources/<uuid:datasource_id>/query/', views.query_datasource, name='query_datasource'),
     
     # Debug endpoints
     path('api/debug/vector-store/', views.debug_vector_store, name='debug_vector_store'),

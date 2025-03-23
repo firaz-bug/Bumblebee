@@ -6,14 +6,15 @@ from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Document, Conversation, Message, Automation, Incident
+from .models import Document, Conversation, Message, Automation, Incident, DataSource
 from .forms import DocumentUploadForm
-from .serializers import DocumentSerializer, ConversationSerializer, MessageSerializer, AutomationSerializer, IncidentSerializer
+from .serializers import DocumentSerializer, ConversationSerializer, MessageSerializer, AutomationSerializer, IncidentSerializer, DataSourceSerializer
 from .utils.document_processor import process_document
 from .utils.vector_store import VectorStore
 from .utils.llm_service import LLMService
 from .utils.openai_service import OpenAIService
 from .utils.automation_service import AutomationService
+from .utils.datasource_service import DataSourceService
 import json
 import os
 
@@ -21,8 +22,9 @@ import os
 openai_service = OpenAIService()
 vector_store = VectorStore(settings.VECTOR_STORE_DIR)
 llm_service = LLMService(settings.LLM_MODEL_PATH, settings.LLM_MODEL_NAME)
-# Create a variable to store the AutomationService instance - will be initialized on first use
+# Create a variable to store the service instances - will be initialized on first use
 automation_service = None
+datasource_service = None
 
 # Connect OpenAI service to vector store for better embeddings
 vector_store.openai_service = openai_service
@@ -40,6 +42,13 @@ def get_automation_service():
     if automation_service is None:
         automation_service = AutomationService()
     return automation_service
+
+# Helper function to get or create the data source service
+def get_datasource_service():
+    global datasource_service
+    if datasource_service is None:
+        datasource_service = DataSourceService()
+    return datasource_service
 
 def index(request):
     """Render the main chat interface."""
@@ -138,6 +147,22 @@ def messages(request, conversation_id):
                 conversation=conversation,
                 role='assistant',
                 content=automation_response
+            )
+            
+            # Return both user and assistant messages
+            serializer = MessageSerializer([user_message_obj, assistant_message], many=True)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        # Check for @datasource command
+        if '@datasource' in user_message.lower():
+            # Handle data source command
+            datasource_response = get_datasource_service().handle_datasource_command(user_message)
+            
+            # Create assistant message with data source response
+            assistant_message = Message.objects.create(
+                conversation=conversation,
+                role='assistant',
+                content=datasource_response
             )
             
             # Return both user and assistant messages
@@ -345,6 +370,33 @@ def debug_vector_store(request):
         'sample_chunks': sample_docs,
         'openai_service_attached': hasattr(vector_store, 'openai_service') and vector_store.openai_service is not None
     })
+@api_view(['GET'])
+def datasources(request):
+    """API endpoint to list available data sources."""
+    datasources = DataSource.objects.all()
+    serializer = DataSourceSerializer(datasources, many=True)
+    return Response(serializer.data)
+
+@api_view(['POST'])
+def query_datasource(request, datasource_id):
+    """API endpoint to query a specific data source."""
+    try:
+        datasource = DataSource.objects.get(pk=datasource_id)
+    except DataSource.DoesNotExist:
+        return Response(
+            {"error": "Data source not found"}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Execute the query
+    result = get_datasource_service().execute_query(
+        datasource.endpoint,
+        datasource.parameters,
+        request.data
+    )
+    
+    return Response({"result": result})
+
 @api_view(['GET', 'POST'])
 @csrf_exempt
 def incidents(request):
