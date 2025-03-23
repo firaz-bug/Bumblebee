@@ -1,5 +1,11 @@
 from rest_framework import serializers
-from .models import Document, Conversation, Message, Automation, Incident
+from .models import Document, Conversation, Message, Automation, Incident, DataSource
+
+class DataSourceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DataSource
+        fields = ['id', 'name', 'description', 'endpoint', 'parameters', 'auth_required', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 class DocumentSerializer(serializers.ModelSerializer):
     class Meta:

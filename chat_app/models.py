@@ -2,6 +2,20 @@ from django.db import models
 import os
 import uuid
 
+class DataSource(models.Model):
+    """Model for external data sources that can be queried."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100)
+    description = models.TextField()
+    endpoint = models.CharField(max_length=255)
+    parameters = models.JSONField(default=dict, blank=True)
+    auth_required = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
 class Document(models.Model):
     """Model for uploaded documents that are processed into the vector store."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
