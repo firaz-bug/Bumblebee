@@ -636,6 +636,18 @@ button, input, textarea {
 .incident-status.resolved {
     background-color: #e8f5e9;
     color: #2e7d32;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.incident-item[data-status="resolved"] {
+    border-color: #4caf50;
+    background-color: #f1f8e9;
+}
+
+.incident-item[data-status="resolved"] .incident-icon {
+    color: #4caf50;
 }
 
 .incident-item:hover {

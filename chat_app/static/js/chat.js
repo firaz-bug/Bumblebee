@@ -692,12 +692,12 @@ function renderIncidentsList(incidents) {
         
         // Determine severity class and icon
         let severityClass = 'medium';
-        let severityIcon = 'alert-triangle';
+        let severityIcon = incident.status === 'resolved' ? 'check-circle' : 'alert-triangle';
         
-        if (incident.severity === 'high') {
+        if (incident.severity === 'high' && incident.status !== 'resolved') {
             severityClass = 'high';
             severityIcon = 'alert-circle';
-        } else if (incident.severity === 'low') {
+        } else if (incident.severity === 'low' && incident.status !== 'resolved') {
             severityClass = 'low';
             severityIcon = 'alert-octagon';
         }
