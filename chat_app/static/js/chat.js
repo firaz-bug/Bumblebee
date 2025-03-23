@@ -653,15 +653,22 @@ window.addEventListener('click', (e) => {
 
 // Incidents List Functions
 function loadIncidents() {
+    const incidentsList = document.getElementById('incidents-list');
+    if (!incidentsList) return;
+
     fetch('/api/incidents/')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(incidents => {
             renderIncidentsList(incidents);
         })
         .catch(error => {
             console.error('Error loading incidents:', error);
-            document.getElementById('incidents-list').innerHTML = 
-                '<div class="loading-incidents">Failed to load incidents. Please try again.</div>';
+            incidentsList.innerHTML = '<div class="loading-incidents">Failed to load incidents. Please try again.</div>';
         });
 }
 
@@ -709,11 +716,17 @@ function renderIncidentsList(incidents) {
             // Future enhancement: show incident details in a modal or dedicated view
             console.log('Incident clicked:', incident.id);
         });
+        
+        incidentsListEl.appendChild(incidentEl);
     });
     
     // Reinitialize Feather icons
     feather.replace();
 }
+
+// Load incidents initially and refresh periodically
+loadIncidents();
+setInterval(loadIncidents, 30000); // Refresh every 30 seconds
 
 // Handle escape key to close modal
 document.addEventListener('keydown', (e) => {
