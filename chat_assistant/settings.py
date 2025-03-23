@@ -14,8 +14,12 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-q3^#!%38f8_6!q1+cx@
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['0.0.0.0', 'localhost', '127.0.0.1', '.replit.dev', '.repl.co']
-CSRF_TRUSTED_ORIGINS = ['https://*.replit.dev', 'https://*.repl.co']
+ALLOWED_HOSTS = ['0.0.0.0', 'localhost', '127.0.0.1', '.replit.dev', '.repl.co', '.sisko.replit.dev']
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.replit.dev',
+    'https://*.repl.co',
+    'https://*.sisko.replit.dev'
+]
 
 
 # Application definition
