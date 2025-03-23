@@ -1,5 +1,5 @@
 
-# Chat Assistant with Document Analysis
+# Bumblebee Chat Assistant with Document Analysis
 
 A Django-based chat application that uses OpenAI's API for document analysis and chat functionality.
 
