@@ -15,6 +15,19 @@ class Document(models.Model):
     def __str__(self):
         return self.title
 
+    def delete(self, *args, **kwargs):
+        # Delete from disk first
+        if self.file and os.path.isfile(self.file.path):
+            os.remove(self.file.path)
+        
+        # Clear vector store cache
+        from .utils.vector_store import VectorStore
+        vector_store = VectorStore(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'vector_store'))
+        vector_store._initialize_vector_store()  # Ensure it's loaded
+        vector_store.delete_document(str(self.id))
+        
+        super().delete(*args, **kwargs)
+
     def save(self, *args, **kwargs):
         if self.file:
             if not self.title:
