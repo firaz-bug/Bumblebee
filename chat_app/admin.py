@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Document, Conversation, Message, Automation
+from .models import Document, Conversation, Message, Automation, Incident
 
 @admin.register(Document)
 class DocumentAdmin(admin.ModelAdmin):
@@ -23,3 +23,9 @@ class MessageAdmin(admin.ModelAdmin):
 class AutomationAdmin(admin.ModelAdmin):
     list_display = ('name', 'description', 'endpoint')
     search_fields = ('name', 'description', 'endpoint')
+
+@admin.register(Incident)
+class IncidentAdmin(admin.ModelAdmin):
+    list_display = ('title', 'severity', 'status', 'created_at')
+    search_fields = ('title', 'description')
+    list_filter = ('severity', 'status', 'created_at')
