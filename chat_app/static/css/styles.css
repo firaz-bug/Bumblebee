@@ -546,6 +546,92 @@ button, input, textarea {
     padding: 10px;
 }
 
+/* Incidents List Styles */
+.incidents-list-container {
+    margin-top: 20px;
+    padding: 0 15px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+.incidents-list-container h3 {
+    font-size: 16px;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.incidents-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.incident-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 5px;
+    margin-bottom: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.incident-item:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.incident-icon {
+    margin-right: 8px;
+}
+
+.incident-icon.high {
+    color: #ff5252;
+}
+
+.incident-icon.medium {
+    color: #ff9800;
+}
+
+.incident-icon.low {
+    color: #4caf50;
+}
+
+.incident-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.incident-status {
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 5px;
+}
+
+.incident-status.open {
+    background-color: #ffe0e0;
+    color: #d32f2f;
+}
+
+.incident-status.in-progress {
+    background-color: #fff3e0;
+    color: #f57c00;
+}
+
+.incident-status.resolved {
+    background-color: #e8f5e9;
+    color: #388e3c;
+}
+
+.loading-incidents {
+    font-size: 14px;
+    color: #888;
+    text-align: center;
+    padding: 10px;
+}
+
 /* Responsive Styles */
 @media (max-width: 768px) {
     .app-container {
