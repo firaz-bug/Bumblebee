@@ -18,7 +18,16 @@
         }
 
         .empty-space {
-            width: 30%;
+            width: 40%;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--color-border);
+        }
+
+        .empty-space-top,
+        .empty-space-bottom {
+            height: 50%;
+            border-bottom: 1px solid var(--color-border);
         }
 
         .main-content {
@@ -38,7 +47,10 @@
             </div>
         </aside>
 
-        <div class="empty-space"></div>
+        <div class="empty-space">
+            <div class="empty-space-top"></div>
+            <div class="empty-space-bottom"></div>
+        </div>
 
         <main class="main-content">
             {% block content %}{% endblock %}
