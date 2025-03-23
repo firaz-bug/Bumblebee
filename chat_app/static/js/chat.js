@@ -626,7 +626,13 @@ function deleteDocument(documentId) {
             throw new Error(`HTTP error ${response.status}`);
         }
         
-        // Reload documents
+        // Remove the document element from UI
+        const docElement = document.querySelector(`.document-item[data-id="${documentId}"]`);
+        if (docElement) {
+            docElement.remove();
+        }
+        
+        // Reload documents to ensure sync
         loadDocuments();
     })
     .catch(error => {
