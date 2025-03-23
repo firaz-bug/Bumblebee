@@ -38,6 +38,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load documents for the sidebar
     loadDocuments();
     
+    // Load incidents for the sidebar
+    loadIncidents();
+    
     // Setup auto-resize for textarea
     setupTextareaAutoResize();
 });
@@ -647,6 +650,70 @@ window.addEventListener('click', (e) => {
         uploadModal.style.display = 'none';
     }
 });
+
+// Incidents List Functions
+function loadIncidents() {
+    fetch('/api/incidents/')
+        .then(response => response.json())
+        .then(incidents => {
+            renderIncidentsList(incidents);
+        })
+        .catch(error => {
+            console.error('Error loading incidents:', error);
+            document.getElementById('incidents-list').innerHTML = 
+                '<div class="loading-incidents">Failed to load incidents. Please try again.</div>';
+        });
+}
+
+function renderIncidentsList(incidents) {
+    const incidentsListEl = document.getElementById('incidents-list');
+    
+    // Empty the list first
+    incidentsListEl.innerHTML = '';
+    
+    if (incidents.length === 0) {
+        incidentsListEl.innerHTML = '<div class="loading-incidents">No incidents reported yet.</div>';
+        return;
+    }
+    
+    // Add each incident to the list
+    incidents.forEach(incident => {
+        const incidentEl = document.createElement('div');
+        incidentEl.className = 'incident-item';
+        incidentEl.setAttribute('data-id', incident.id);
+        
+        // Determine severity class and icon
+        let severityClass = 'medium';
+        if (incident.severity === 'high') {
+            severityClass = 'high';
+        } else if (incident.severity === 'low') {
+            severityClass = 'low';
+        }
+        
+        // Format status for display
+        const statusClass = incident.status.toLowerCase().replace(' ', '-');
+        const statusDisplay = incident.status.charAt(0).toUpperCase() + incident.status.slice(1);
+        
+        incidentEl.innerHTML = `
+            <div class="incident-icon ${severityClass}">
+                <i data-feather="alert-circle"></i>
+            </div>
+            <div class="incident-title">${incident.title}</div>
+            <div class="incident-status ${statusClass}">${statusDisplay}</div>
+        `;
+        
+        incidentsListEl.appendChild(incidentEl);
+        
+        // Add click event to show incident details
+        incidentEl.addEventListener('click', () => {
+            // Future enhancement: show incident details in a modal or dedicated view
+            console.log('Incident clicked:', incident.id);
+        });
+    });
+    
+    // Reinitialize Feather icons
+    feather.replace();
+}
 
 // Handle escape key to close modal
 document.addEventListener('keydown', (e) => {
