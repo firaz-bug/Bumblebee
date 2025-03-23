@@ -19,8 +19,7 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.replit.dev',
     'https://*.repl.co',
     'https://*.sisko.replit.dev',
-    'https://*.*.replit.dev',
-    'https://*.*.repl.co'
+    'https://5c3a75fc-ee19-46c1-bdfa-f83a3406b60d-00-256xi9t9qfilw.sisko.replit.dev:3000'
 ]
 
 
