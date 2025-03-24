@@ -750,6 +750,24 @@ function showIncidentDetails(incident) {
         <p>${incident.description}</p>
         <div class="incident-timestamp">Reported: ${new Date(incident.created_at).toLocaleString()}</div>
     `;
+    
+    // Update the summary section to show only this incident's summary
+    const summaryContainer = document.getElementById('incident-summary');
+    if (summaryContainer) {
+        summaryContainer.innerHTML = `
+            <h3>Incident Summary</h3>
+            <div class="summary-content">
+                <div class="ai-summary">
+                    <h4>Current Incident</h4>
+                    <div class="ai-summary-content">
+                        <p><strong>${incident.title}</strong> (${incident.severity} severity, ${incident.status})</p>
+                        <p>${incident.description}</p>
+                        <p class="incident-timestamp">Last updated: ${new Date(incident.updated_at || incident.created_at).toLocaleString()}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
 }
 
 function highlightIncident(element) {
