@@ -37,7 +37,36 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Left sidebar for navigation -->
+        <!-- Left column for incidents -->
+        <aside class="incidents-column">
+            <div class="incidents-header">
+                <h1 class="incidents-title">Incidents</h1>
+            </div>
+            
+            <!-- Selected incident details section (25% height) -->
+            <div id="incident-details" class="incident-details">
+                <div class="empty-state">Select an incident to view details</div>
+            </div>
+            
+            <!-- Incidents summary section (25% height) -->
+            <div id="incident-summary" class="incident-summary">
+                <h3>Incidents Summary</h3>
+                <div id="summary-content" class="summary-content">
+                    <div class="loading-summary">Generating summary...</div>
+                </div>
+            </div>
+            
+            <!-- Incidents list (50% height) -->
+            <div class="incidents-section">
+                <h3>All Incidents</h3>
+                <div id="incidents-list" class="incidents-list">
+                    <!-- Incidents will be loaded here -->
+                    <div class="loading-incidents">Loading incidents...</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Middle column for chat assistant -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <h1 class="app-title">Chat Assistant</h1>
@@ -72,35 +101,6 @@
         <main class="main-content">
             {% block content %}{% endblock %}
         </main>
-
-        <!-- Right column for incidents -->
-        <aside class="incidents-column">
-            <div class="incidents-header">
-                <h1 class="incidents-title">Incidents</h1>
-            </div>
-            
-            <!-- Selected incident details section -->
-            <div id="incident-details" class="incident-details">
-                <div class="empty-state">Select an incident to view details</div>
-            </div>
-            
-            <!-- Incidents summary section -->
-            <div id="incident-summary" class="incident-summary">
-                <h3>Incidents Summary</h3>
-                <div id="summary-content" class="summary-content">
-                    <div class="loading-summary">Generating summary...</div>
-                </div>
-            </div>
-            
-            <!-- Incidents list -->
-            <div class="incidents-section">
-                <h3>All Incidents</h3>
-                <div id="incidents-list" class="incidents-list">
-                    <!-- Incidents will be loaded here -->
-                    <div class="loading-incidents">Loading incidents...</div>
-                </div>
-            </div>
-        </aside>
 
         <!-- Upload Document Modal -->
         <div id="upload-modal" class="modal">

@@ -119,34 +119,24 @@ button, input, textarea {
     display: flex;
     flex-direction: column;
     overflow-y: auto;
-}
-
-.empty-space {
-    width: 30%;
-    background-color: var(--color-bg);
-    display: flex;
-    flex-direction: column; /* Added for better layout */
-}
-
-.empty-space-top,
-.empty-space-bottom {
-    flex: 1; /* Added for equal height distribution */
+    order: 1; /* Place incidents column first */
 }
 
 .sidebar {
-    width: 280px;
+    width: 20%;
     background-color: var(--color-sidebar-bg);
     border-right: 1px solid var(--color-border);
     display: flex;
     flex-direction: column;
-    order: 3;
+    order: 2; /* Place sidebar in the middle */
 }
 
 .main-content {
-    width: 40%;
+    width: 60%;
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    order: 3; /* Place main content last */
 }
 
 /* Sidebar styles */
@@ -596,7 +586,8 @@ button, input, textarea {
     padding: 15px;
     border-bottom: 1px solid var(--color-border);
     background-color: var(--color-bg);
-    max-height: 30vh;
+    height: 25vh; /* Set exact height to 25% */
+    max-height: 25vh;
     overflow-y: auto;
 }
 
