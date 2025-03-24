@@ -738,19 +738,18 @@ document.addEventListener('keydown', (e) => {
     }
 });
 function showIncidentDetails(incident) {
-    const detailsContainer = document.querySelector('.incident-details');
-    const title = document.getElementById('incident-title');
-    const severity = document.getElementById('incident-severity');
-    const status = document.getElementById('incident-status');
-    const description = document.getElementById('incident-description');
-
-    detailsContainer.style.display = 'block';
-    title.textContent = incident.title;
-    severity.textContent = `Severity: ${incident.severity}`;
-    severity.className = incident.severity.toLowerCase();
-    status.textContent = `Status: ${incident.status}`;
-    status.className = incident.status.toLowerCase().replace(' ', '-');
-    description.textContent = incident.description;
+    const detailsContainer = document.getElementById('incident-details');
+    
+    // Generate the details HTML
+    detailsContainer.innerHTML = `
+        <h3>${incident.title}</h3>
+        <div class="incident-details-meta">
+            <span class="${incident.severity.toLowerCase()}">Severity: ${incident.severity}</span>
+            <span class="${incident.status.toLowerCase().replace(' ', '-')}">Status: ${incident.status}</span>
+        </div>
+        <p>${incident.description}</p>
+        <div class="incident-timestamp">Reported: ${new Date(incident.created_at).toLocaleString()}</div>
+    `;
 }
 
 function highlightIncident(element) {
@@ -763,29 +762,64 @@ function highlightIncident(element) {
 }
 
 function updateIncidentsSummary(incidents) {
-    const summaryContainer = document.getElementById('incidents-summary');
+    const summaryContainer = document.getElementById('summary-content');
+    
+    if (!summaryContainer) return;
     
     // Count incidents by status
     const stats = {
         total: incidents.length,
         open: incidents.filter(i => i.status === 'open').length,
+        inProgress: incidents.filter(i => i.status === 'in-progress').length,
         resolved: incidents.filter(i => i.status === 'resolved').length
     };
     
+    // Calculate by severity
+    const severityStats = {
+        high: incidents.filter(i => i.severity === 'high').length,
+        medium: incidents.filter(i => i.severity === 'medium').length,
+        low: incidents.filter(i => i.severity === 'low').length
+    };
+    
     summaryContainer.innerHTML = `
-        <div class="stat-item">
-            <div class="stat-number">${stats.total}</div>
-            <div class="stat-label">Total Incidents</div>
+        <div class="summary-stats">
+            <div class="stat-item">
+                <div class="stat-number">${stats.total}</div>
+                <div class="stat-label">Total</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">${stats.open}</div>
+                <div class="stat-label">Open</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">${stats.inProgress}</div>
+                <div class="stat-label">In Progress</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">${stats.resolved}</div>
+                <div class="stat-label">Resolved</div>
+            </div>
         </div>
-        <div class="stat-item">
-            <div class="stat-number">${stats.open}</div>
-            <div class="stat-label">Open</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-number">${stats.resolved}</div>
-            <div class="stat-label">Resolved</div>
+        <div class="summary-separator"></div>
+        <div class="severity-stats">
+            <div class="severity-item high">
+                <span class="severity-label">High:</span>
+                <span class="severity-count">${severityStats.high}</span>
+            </div>
+            <div class="severity-item medium">
+                <span class="severity-label">Medium:</span>
+                <span class="severity-count">${severityStats.medium}</span>
+            </div>
+            <div class="severity-item low">
+                <span class="severity-label">Low:</span>
+                <span class="severity-count">${severityStats.low}</span>
+            </div>
         </div>
     `;
+    
+    // Add AI-generated summary later using OpenAI service
+    getIncidentsSummaryFromAI(incidents);
+}
 }
 
 // Update loadIncidents function to include summary
