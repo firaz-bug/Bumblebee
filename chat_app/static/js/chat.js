@@ -1,172 +1,181 @@
-// DOM Elements
-const chatMessages = document.getElementById('chat-messages');
-const chatForm = document.getElementById('chat-form');
-const chatInput = document.getElementById('chat-input');
-const newChatBtn = document.getElementById('new-chat-btn');
-const uploadBtn = document.getElementById('upload-document-btn');
-const uploadModal = document.getElementById('upload-modal');
-const statusUpdateModal = document.getElementById('status-update-modal');
-const uploadForm = document.getElementById('document-upload-form');
-const uploadStatus = document.getElementById('upload-status');
-const closeModalBtns = document.querySelectorAll('.modal-close, .modal-close-btn');
-const renameChatBtn = document.getElementById('rename-chat-btn');
-const deleteChatBtn = document.getElementById('delete-chat-btn');
-const chatTitle = document.getElementById('current-chat-title');
-const conversationsList = document.querySelector('.conversations-list');
+// Chat.js - Main JavaScript file for the Wells Fargo AI Platform Support Assistant
 
-// State
-let currentConversationId = null;
-let conversationsData = [];
-let isProcessing = false;
-
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    // Initialize feather icons
-    feather.replace();
-    
-    // Get the conversation ID from the active conversation
-    const activeConversation = document.querySelector('.conversation-item.active');
-    if (activeConversation) {
-        currentConversationId = activeConversation.dataset.id;
-        loadMessages(currentConversationId);
-    } else {
-        createNewConversation();
-    }
-    
-    // Load all conversations for the sidebar
+document.addEventListener('DOMContentLoaded', function() {
+    // Initial setup - load data and set up event listeners
     loadConversations();
-    
-    // Load documents for the sidebar
     loadDocuments();
-    
-    // Load incidents for the sidebar
     loadIncidents();
-    
-    // Load recommendations column data
     loadAutomations();
     loadDashboards();
     loadLogs();
     
-    // Setup auto-resize for textarea
-    setupTextareaAutoResize();
+    // Setup the chat submission event
+    const chatForm = document.getElementById('chat-form');
+    if (chatForm) {
+        chatForm.addEventListener('submit', handleChatSubmit);
+    }
     
-    // Setup status update form submission
-    const statusUpdateForm = document.getElementById('status-update-form');
-    if (statusUpdateForm) {
-        statusUpdateForm.addEventListener('submit', function(e) {
+    // Setup document upload form
+    const uploadForm = document.getElementById('document-upload');
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', handleDocumentUpload);
+    }
+    
+    // Setup the new conversation button
+    const newConversationBtn = document.getElementById('new-conversation-btn');
+    if (newConversationBtn) {
+        newConversationBtn.addEventListener('click', createNewConversation);
+    }
+    
+    // Rename conversation button
+    const renameConversationBtn = document.getElementById('rename-conversation-btn');
+    if (renameConversationBtn) {
+        renameConversationBtn.addEventListener('click', renameConversation);
+    }
+    
+    // Delete conversation button
+    const deleteConversationBtn = document.getElementById('delete-conversation-btn');
+    if (deleteConversationBtn) {
+        deleteConversationBtn.addEventListener('click', deleteConversation);
+    }
+    
+    // Set up status form submit
+    const statusForm = document.getElementById('status-update-form');
+    if (statusForm) {
+        statusForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            // Get incident ID and new status from the modal's dataset
-            const statusModal = document.getElementById('status-update-modal');
-            const incidentId = statusModal.dataset.incidentId;
-            const newStatus = statusModal.dataset.newStatus;
+            // Get the incident ID and new status from the modal data attributes
+            const modal = document.getElementById('status-update-modal');
+            const incidentId = modal.dataset.incidentId;
+            const newStatus = modal.dataset.newStatus;
             
-            // Get comments from the form
-            const comments = document.getElementById('status-comments').value;
+            // Get comments from textarea
+            const commentsTextarea = document.getElementById('status-comments');
+            const comments = commentsTextarea.value;
             
-            // Update incident status with comments
+            // Update the incident status
             updateIncidentStatus(incidentId, newStatus, comments);
             
-            // Hide the modal
-            statusModal.style.display = 'none';
-            
-            // Clear form
-            document.getElementById('status-comments').value = '';
+            // Clear the form and hide the modal
+            commentsTextarea.value = '';
+            modal.style.display = 'none';
         });
     }
-});
-
-// Event Listeners
-chatForm.addEventListener('submit', handleChatSubmit);
-newChatBtn.addEventListener('submit', createNewConversation);
-newChatBtn.addEventListener('click', createNewConversation);
-uploadBtn.addEventListener('click', () => uploadModal.style.display = 'block');
-uploadForm.addEventListener('submit', handleDocumentUpload);
-closeModalBtns.forEach(btn => {
-    btn.addEventListener('click', function() {
-        // Close all modals
-        if (uploadModal) uploadModal.style.display = 'none';
-        if (statusUpdateModal) statusUpdateModal.style.display = 'none';
+    
+    // Set up modal close buttons
+    document.querySelectorAll('.close-modal').forEach(closeBtn => {
+        closeBtn.addEventListener('click', function() {
+            const modal = this.closest('.modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        });
     });
-});
-renameChatBtn.addEventListener('click', renameConversation);
-deleteChatBtn.addEventListener('click', deleteConversation);
-
-// Handle conversation click in sidebar
-document.addEventListener('click', (e) => {
-    const conversationItem = e.target.closest('.conversation-item');
-    if (conversationItem) {
-        const conversationId = conversationItem.dataset.id;
-        changeConversation(conversationId);
+    
+    // Close modals when clicking outside
+    window.addEventListener('click', function(event) {
+        document.querySelectorAll('.modal').forEach(modal => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    });
+    
+    // Set up textarea auto-resize
+    setupTextareaAutoResize();
+    
+    // Initialize Feather icons
+    if (typeof feather !== 'undefined') {
+        feather.replace();
     }
 });
 
-// Core Functions
+// Function to load conversations
 function loadConversations() {
+    const conversationsList = document.getElementById('conversations-list');
+    if (!conversationsList) return;
+    
     fetch('/api/conversations/')
-        .then(response => response.json())
-        .then(data => {
-            conversationsData = data;
-            renderConversationsList(data);
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
         })
-        .catch(error => console.error('Error loading conversations:', error));
+        .then(conversations => {
+            renderConversationsList(conversations);
+            
+            // If there are conversations and none is selected, select the first one
+            if (conversations.length > 0 && !document.querySelector('.conversation-item.active')) {
+                changeConversation(conversations[0].id);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading conversations:', error);
+            conversationsList.innerHTML = '<div class="loading-error">Failed to load conversations. Please try again.</div>';
+        });
 }
 
+// Function to render the conversations list
 function renderConversationsList(conversations) {
-    conversationsList.innerHTML = '';
+    const conversationsList = document.getElementById('conversations-list');
+    if (!conversationsList) return;
     
+    if (conversations.length === 0) {
+        conversationsList.innerHTML = '<div class="empty-conversations">No conversations yet. Start chatting!</div>';
+        return;
+    }
+    
+    let html = '';
     conversations.forEach(conversation => {
-        const isActive = conversation.id === currentConversationId;
-        const conversationEl = document.createElement('div');
-        conversationEl.className = `conversation-item ${isActive ? 'active' : ''}`;
-        conversationEl.dataset.id = conversation.id;
-        conversationEl.innerHTML = `
-            <i data-feather="message-square"></i>
-            <span class="conversation-title">${conversation.title}</span>
+        const activeClass = (window.currentConversationId && window.currentConversationId === conversation.id) ? 'active' : '';
+        
+        html += `
+            <div class="conversation-item ${activeClass}" data-id="${conversation.id}">
+                <div class="conversation-title" onclick="changeConversation('${conversation.id}')">${conversation.title}</div>
+                <div class="conversation-date">${new Date(conversation.updated_at).toLocaleDateString()}</div>
+            </div>
         `;
-        conversationsList.appendChild(conversationEl);
     });
     
-    // Re-initialize feather icons
-    feather.replace();
+    conversationsList.innerHTML = html;
 }
 
+// Function to load messages for a conversation
 function loadMessages(conversationId) {
-    chatMessages.innerHTML = '';
-    
-    // Show loading indicator
-    chatMessages.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+    const messagesContainer = document.getElementById('messages-container');
+    if (!messagesContainer) return;
     
     fetch(`/api/conversations/${conversationId}/messages/`)
-        .then(response => response.json())
-        .then(data => {
-            chatMessages.innerHTML = '';
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(messages => {
+            messagesContainer.innerHTML = '';
             
-            // Render each message
-            data.forEach(message => {
+            messages.forEach(message => {
                 addMessageToUI(message.role, message.content);
             });
             
-            // Scroll to bottom
             scrollToBottom();
         })
         .catch(error => {
             console.error('Error loading messages:', error);
-            chatMessages.innerHTML = '<div class="message system"><div class="message-content">Failed to load messages. Please try again.</div></div>';
+            messagesContainer.innerHTML = '<div class="loading-error">Failed to load messages. Please try again.</div>';
         });
 }
 
+// Function to create a new conversation
 function createNewConversation() {
-    if (isProcessing) return;
-    
-    isProcessing = true;
-    console.log("Creating new conversation...");
-    
     fetch('/api/conversations/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': getCSRFToken(),
+            'X-CSRFToken': getCSRFToken()
         },
         body: JSON.stringify({
             title: 'New Conversation'
@@ -174,411 +183,328 @@ function createNewConversation() {
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+            throw new Error('Network response was not ok');
         }
         return response.json();
     })
-    .then(data => {
-        console.log("New conversation created:", data);
-        
-        // Update the current conversation state
-        currentConversationId = data.id;
-        chatTitle.textContent = data.title;
-        
-        // Clear chat messages
-        chatMessages.innerHTML = '';
-        
-        // Update the UI
+    .then(conversation => {
+        // Add the new conversation to the list and select it
         loadConversations();
-        loadMessages(currentConversationId);
-        
-        isProcessing = false;
+        changeConversation(conversation.id);
     })
     .catch(error => {
         console.error('Error creating conversation:', error);
-        alert('Failed to create a new conversation. Please try again.');
-        isProcessing = false;
+        alert('Failed to create new conversation. Please try again.');
     });
 }
 
+// Function to change the active conversation
 function changeConversation(conversationId) {
-    if (conversationId === currentConversationId || isProcessing) return;
+    window.currentConversationId = conversationId;
     
-    currentConversationId = conversationId;
-    
-    // Update active state in sidebar
+    // Update active conversation in UI
     document.querySelectorAll('.conversation-item').forEach(item => {
-        item.classList.toggle('active', item.dataset.id === conversationId);
+        if (item.dataset.id === conversationId) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
     });
     
-    // Find the conversation title
-    const conversation = conversationsData.find(c => c.id === conversationId);
-    if (conversation) {
-        chatTitle.textContent = conversation.title;
-    }
+    // Update conversation title in the chat header
+    fetch(`/api/conversations/${conversationId}/`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(conversation => {
+            const chatTitle = document.getElementById('conversation-title');
+            if (chatTitle) {
+                chatTitle.textContent = conversation.title;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading conversation details:', error);
+        });
     
-    // Load messages for this conversation
+    // Load messages for the selected conversation
     loadMessages(conversationId);
 }
 
+// Function to handle chat submission
 function handleChatSubmit(e) {
     e.preventDefault();
     
-    if (isProcessing) return;
+    const messageInput = document.getElementById('message-input');
+    const message = messageInput.value.trim();
     
-    const userMessage = chatInput.value.trim();
-    if (!userMessage) return;
+    if (!message) return;
     
-    // Clear input
-    chatInput.value = '';
+    // Check if a conversation is selected
+    if (!window.currentConversationId) {
+        createNewConversation().then(() => {
+            // Now we have a conversation, send the message
+            handleChatSubmit(e);
+        });
+        return;
+    }
+    
+    // Add the message to UI immediately
+    addMessageToUI('user', message);
+    messageInput.value = '';
     resetTextareaHeight();
     
-    // Add user message to UI
-    addMessageToUI('user', userMessage);
+    // Show loading indicator
+    addMessageToUI('assistant', '<div class="typing-indicator"><span></span><span></span><span></span></div>');
     
-    // Show typing indicator
-    const typingIndicator = document.createElement('div');
-    typingIndicator.className = 'typing-indicator';
-    typingIndicator.innerHTML = '<span></span><span></span><span></span>';
-    chatMessages.appendChild(typingIndicator);
-    scrollToBottom();
-    
-    isProcessing = true;
-    
-    // Send message to server
-    fetch(`/api/conversations/${currentConversationId}/messages/`, {
+    // Send the message to the server
+    fetch(`/api/conversations/${window.currentConversationId}/messages/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': getCSRFToken(),
+            'X-CSRFToken': getCSRFToken()
         },
         body: JSON.stringify({
-            content: userMessage
+            role: 'user',
+            content: message
         })
     })
     .then(response => {
         if (!response.ok) {
-            return response.text().then(text => {
-                console.error('Message error details:', text);
-                throw new Error(`HTTP error ${response.status}: ${text}`);
-            });
+            throw new Error('Network response was not ok');
         }
         return response.json();
     })
     .then(data => {
-        // Remove typing indicator
-        if (typingIndicator.parentNode) {
-            typingIndicator.parentNode.removeChild(typingIndicator);
+        // Remove the loading indicator
+        const loadingIndicator = document.querySelector('.typing-indicator');
+        if (loadingIndicator) {
+            loadingIndicator.parentElement.remove();
         }
         
-        console.log('Response data:', data);
-        
-        // The response contains both the user message and the assistant's response(s)
-        // We've already added the user message, so we just need the assistant's response(s)
-        if (Array.isArray(data)) {
-            // Find all assistant messages in the response
-            const assistantMessages = data.filter(msg => msg.role === 'assistant');
-            
-            // Add all assistant messages to UI
-            for (const msg of assistantMessages) {
-                addMessageToUI('assistant', msg.content);
-            }
-        } else if (data.role === 'assistant') {
-            // Handle case where only one message is returned
-            addMessageToUI('assistant', data.content);
+        // Add the assistant's response
+        if (data.assistant_response) {
+            addMessageToUI('assistant', data.assistant_response);
         }
         
-        isProcessing = false;
-        scrollToBottom();
+        // Update the conversations list to show the latest
+        loadConversations();
     })
     .catch(error => {
         console.error('Error sending message:', error);
         
-        // Remove typing indicator
-        if (typingIndicator.parentNode) {
-            typingIndicator.parentNode.removeChild(typingIndicator);
+        // Remove the loading indicator
+        const loadingIndicator = document.querySelector('.typing-indicator');
+        if (loadingIndicator) {
+            loadingIndicator.parentElement.remove();
         }
         
-        // Add error message
-        addMessageToUI('system', 'Failed to send message. Please try again.');
-        
-        isProcessing = false;
-        scrollToBottom();
+        // Show error message
+        addMessageToUI('assistant', 'Sorry, there was an error processing your request. Please try again.');
     });
 }
 
+// Function to handle document upload
 function handleDocumentUpload(e) {
     e.preventDefault();
     
-    if (isProcessing) return;
-    
-    const fileInput = document.getElementById('document-file');
+    const fileInput = document.getElementById('file-input');
     const file = fileInput.files[0];
     
     if (!file) {
-        updateUploadStatus('Please select a file to upload.', 'error');
+        updateUploadStatus('Please select a file.', 'error');
         return;
     }
     
-    // Check file type
-    const fileExtension = file.name.split('.').pop().toLowerCase();
-    const allowedTypes = ['pdf', 'docx', 'doc', 'txt', 'md'];
-    
-    if (!allowedTypes.includes(fileExtension)) {
-        updateUploadStatus(`File type .${fileExtension} is not supported. Please use PDF, DOCX, TXT, or MD files.`, 'error');
-        return;
-    }
-    
-    // Update UI
-    updateUploadStatus('Uploading document...', 'info');
-    isProcessing = true;
-    
-    // Create form data
+    // Create form data for the file upload
     const formData = new FormData();
     formData.append('file', file);
     
-    // Send to server - don't include Content-Type header with FormData
+    // Update upload status
+    updateUploadStatus('Uploading...', 'info');
+    
+    // Send the file to the server
     fetch('/api/documents/upload/', {
         method: 'POST',
         headers: {
-            'X-CSRFToken': getCSRFToken(),
-            // Let browser set Content-Type with boundary for FormData
+            'X-CSRFToken': getCSRFToken()
         },
-        body: formData,
-        credentials: 'same-origin' // Include cookies for CSRF
+        body: formData
     })
     .then(response => {
         if (!response.ok) {
-            return response.text().then(text => {
-                console.error('Upload error details:', text);
-                throw new Error(`HTTP error ${response.status}: ${text}`);
-            });
+            throw new Error('Network response was not ok');
         }
         return response.json();
     })
     .then(data => {
-        updateUploadStatus(`Document "${data.title}" uploaded successfully!`, 'success');
-        
-        // Reset form
+        // Clear the file input
         fileInput.value = '';
         
-        // Reload document list
+        // Update upload status
+        updateUploadStatus(`Uploaded ${data.title} successfully!`, 'success');
+        
+        // Reload documents list
         loadDocuments();
-        
-        // Close modal after a delay
-        setTimeout(() => {
-            uploadModal.style.display = 'none';
-            updateUploadStatus('', '');
-        }, 2000);
-        
-        isProcessing = false;
     })
     .catch(error => {
         console.error('Error uploading document:', error);
         updateUploadStatus('Failed to upload document. Please try again.', 'error');
-        isProcessing = false;
     });
 }
 
+// Function to rename a conversation
 function renameConversation() {
-    if (isProcessing || !currentConversationId) return;
+    if (!window.currentConversationId) {
+        alert('Please select a conversation to rename.');
+        return;
+    }
     
-    const newTitle = prompt('Enter a new name for this conversation:', chatTitle.textContent);
+    const newTitle = prompt('Enter a new title for this conversation:');
+    if (!newTitle) return;
     
-    if (newTitle === null || newTitle.trim() === '') return;
-    
-    isProcessing = true;
-    
-    fetch(`/api/conversations/${currentConversationId}/`, {
-        method: 'PATCH',
+    fetch(`/api/conversations/${window.currentConversationId}/`, {
+        method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': getCSRFToken(),
+            'X-CSRFToken': getCSRFToken()
         },
         body: JSON.stringify({
-            title: newTitle.trim()
+            title: newTitle
         })
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error(`HTTP error ${response.status}`);
+            throw new Error('Network response was not ok');
         }
         return response.json();
     })
-    .then(data => {
-        // Update title in UI
-        chatTitle.textContent = data.title;
+    .then(conversation => {
+        // Update the title in the UI
+        const chatTitle = document.getElementById('conversation-title');
+        if (chatTitle) {
+            chatTitle.textContent = conversation.title;
+        }
         
-        // Update in sidebar
+        // Reload the conversations list
         loadConversations();
-        
-        isProcessing = false;
     })
     .catch(error => {
         console.error('Error renaming conversation:', error);
         alert('Failed to rename conversation. Please try again.');
-        isProcessing = false;
     });
 }
 
+// Function to delete a conversation
 function deleteConversation() {
-    if (!currentConversationId) {
-        console.log('No conversation selected');
+    if (!window.currentConversationId) {
+        alert('Please select a conversation to delete.');
         return;
     }
     
-    if (isProcessing) {
-        console.log('Already processing a request');
+    if (!confirm('Are you sure you want to delete this conversation?')) {
         return;
     }
     
-    if (!confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
-        return;
-    }
-    
-    isProcessing = true;
-    const deletedId = currentConversationId;
-    
-    fetch(`/api/conversations/${currentConversationId}/`, {
+    fetch(`/api/conversations/${window.currentConversationId}/`, {
         method: 'DELETE',
         headers: {
-            'X-CSRFToken': getCSRFToken(),
+            'X-CSRFToken': getCSRFToken()
         }
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error(`HTTP error ${response.status}`);
+            throw new Error('Network response was not ok');
         }
         
-        console.log("Successfully deleted conversation:", deletedId);
+        // Clear the current conversation
+        window.currentConversationId = null;
         
-        // Reset current conversation ID
-        currentConversationId = null;
-        
-        // Clear messages and title
-        chatMessages.innerHTML = '';
-        chatTitle.textContent = '';
-        
-        // Remove the deleted conversation from the list and data
-        const deletedElement = document.querySelector(`.conversation-item[data-id="${deletedId}"]`);
-        if (deletedElement) {
-            deletedElement.remove();
+        // Clear the messages
+        const messagesContainer = document.getElementById('messages-container');
+        if (messagesContainer) {
+            messagesContainer.innerHTML = '';
         }
-        conversationsData = conversationsData.filter(conv => conv.id !== deletedId);
         
-        // Create a new conversation immediately
-        return createNewConversation();
-    })
-    .then(() => {
-        // Force refresh the conversations list
-        return fetch('/api/conversations/')
-            .then(response => response.json())
-            .then(data => {
-                conversationsData = data;
-                renderConversationsList(data);
-            });
+        // Clear the title
+        const chatTitle = document.getElementById('conversation-title');
+        if (chatTitle) {
+            chatTitle.textContent = '';
+        }
+        
+        // Reload the conversations list
+        loadConversations();
     })
     .catch(error => {
-        console.error('Error in conversation deletion flow:', error);
-    })
-    .finally(() => {
-        isProcessing = false;
+        console.error('Error deleting conversation:', error);
+        alert('Failed to delete conversation. Please try again.');
     });
 }
 
-// Make createNewConversation return a promise
-function createNewConversation() {
-    if (isProcessing) return Promise.reject('Processing in progress');
-    
-    isProcessing = true;
-    console.log("Creating new conversation...");
-    
-    return fetch('/api/conversations/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCSRFToken(),
-        },
-        body: JSON.stringify({
-            title: 'New Conversation'
-        })
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        console.log("New conversation created:", data);
-        
-        // Update the current conversation state
-        currentConversationId = data.id;
-        chatTitle.textContent = data.title;
-        
-        // Clear chat messages
-        chatMessages.innerHTML = '';
-        
-        // Refresh conversations list immediately
-        return fetch('/api/conversations/')
-            .then(response => response.json())
-            .then(conversations => {
-                conversationsData = conversations;
-                renderConversationsList(conversations);
-                return loadMessages(currentConversationId);
-            });
-    })
-    .finally(() => {
-        isProcessing = false;
-    });
-}
-
-// Helper Functions
+// Function to add a message to the UI
 function addMessageToUI(role, content) {
-    const messageEl = document.createElement('div');
-    messageEl.className = `message ${role}`;
+    const messagesContainer = document.getElementById('messages-container');
+    if (!messagesContainer) return;
     
-    // Format message content - handle markdown-like syntax
-    let formattedContent = content
-        // Bold text
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        // Code blocks
-        .replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>')
-        // Inline code
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
-        // Newlines
-        .replace(/\n/g, '<br>');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${role}`;
+    messageDiv.innerHTML = `<div class="message-content">${content}</div>`;
     
-    messageEl.innerHTML = `<div class="message-content">${formattedContent}</div>`;
-    chatMessages.appendChild(messageEl);
+    messagesContainer.appendChild(messageDiv);
     scrollToBottom();
 }
 
+// Function to scroll the chat to the bottom
 function scrollToBottom() {
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-function updateUploadStatus(message, type) {
-    uploadStatus.textContent = message;
-    uploadStatus.className = 'upload-status';
-    if (type) {
-        uploadStatus.classList.add(type);
+    const messagesContainer = document.getElementById('messages-container');
+    if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 }
 
+// Function to update upload status
+function updateUploadStatus(message, type) {
+    const uploadStatus = document.getElementById('upload-status');
+    if (!uploadStatus) return;
+    
+    uploadStatus.textContent = message;
+    uploadStatus.className = `upload-status ${type}`;
+    
+    // Clear status after a few seconds
+    setTimeout(() => {
+        uploadStatus.textContent = '';
+        uploadStatus.className = 'upload-status';
+    }, 5000);
+}
+
+// Function to setup textarea auto-resize
 function setupTextareaAutoResize() {
-    chatInput.addEventListener('input', () => {
-        chatInput.style.height = 'auto';
-        chatInput.style.height = (chatInput.scrollHeight) + 'px';
+    const textarea = document.getElementById('message-input');
+    if (!textarea) return;
+    
+    // Set initial height
+    textarea.style.height = 'auto';
+    textarea.style.height = (textarea.scrollHeight) + 'px';
+    
+    // Add event listener for input
+    textarea.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
     });
 }
 
+// Function to reset textarea height
 function resetTextareaHeight() {
-    chatInput.style.height = 'auto';
+    const textarea = document.getElementById('message-input');
+    if (textarea) {
+        textarea.style.height = 'auto';
+    }
 }
 
+// Function to get CSRF token
 function getCSRFToken() {
-    // Get CSRF token from cookie
     const cookieValue = document.cookie
         .split('; ')
         .find(row => row.startsWith('csrftoken='))
@@ -587,90 +513,70 @@ function getCSRFToken() {
     return cookieValue || '';
 }
 
-// Document list functions
+// Function to load documents
 function loadDocuments() {
+    const documentsList = document.getElementById('documents-list');
+    if (!documentsList) return;
+    
     fetch('/api/documents/')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(documents => {
             renderDocumentsList(documents);
         })
         .catch(error => {
             console.error('Error loading documents:', error);
-            document.getElementById('documents-list').innerHTML = 
-                '<div class="loading-documents">Failed to load documents. Please try again.</div>';
+            documentsList.innerHTML = '<div class="loading-error">Failed to load documents. Please try again.</div>';
         });
 }
 
+// Function to render the documents list
 function renderDocumentsList(documents) {
-    const documentsListEl = document.getElementById('documents-list');
-    
-    // Empty the list first
-    documentsListEl.innerHTML = '';
+    const documentsList = document.getElementById('documents-list');
+    if (!documentsList) return;
     
     if (documents.length === 0) {
-        documentsListEl.innerHTML = '<div class="loading-documents">No documents uploaded yet.</div>';
+        documentsList.innerHTML = '<div class="empty-documents">No documents uploaded yet.</div>';
         return;
     }
     
-    // Add each document to the list
-    documents.forEach(doc => {
-        const docEl = document.createElement('div');
-        docEl.className = 'document-item';
-        docEl.setAttribute('data-id', doc.id);
-        
-        // Get icon based on file type
-        let iconName = 'file-text';
-        if (doc.file_type === 'pdf') {
-            iconName = 'file-text';
-        } else if (doc.file_type === 'word') {
-            iconName = 'file';
-        }
-        
-        docEl.innerHTML = `
-            <div class="document-icon">
-                <i data-feather="${iconName}"></i>
-            </div>
-            <div class="document-title">${doc.title}</div>
-            <div class="document-delete" title="Delete document">
-                <i data-feather="trash-2"></i>
+    let html = '';
+    documents.forEach(document => {
+        html += `
+            <div class="document-item">
+                <div class="document-title">${document.title}</div>
+                <div class="document-type">${document.file_type}</div>
+                <div class="document-date">${new Date(document.uploaded_at).toLocaleDateString()}</div>
+                <button class="delete-btn" onclick="deleteDocument('${document.id}')">Delete</button>
             </div>
         `;
-        
-        documentsListEl.appendChild(docEl);
-        
-        // Add event listener for delete button
-        const deleteBtn = docEl.querySelector('.document-delete');
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (confirm('Are you sure you want to delete this document? This action cannot be undone.')) {
-                deleteDocument(doc.id);
-            }
-        });
     });
     
-    // Reinitialize Feather icons
-    feather.replace();
+    documentsList.innerHTML = html;
 }
 
+// Function to delete a document
 function deleteDocument(documentId) {
-    fetch(`/api/documents/${documentId}/delete/`, {
+    if (!confirm('Are you sure you want to delete this document?')) {
+        return;
+    }
+    
+    fetch(`/api/documents/${documentId}/`, {
         method: 'DELETE',
         headers: {
-            'X-CSRFToken': getCSRFToken(),
+            'X-CSRFToken': getCSRFToken()
         }
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error(`HTTP error ${response.status}`);
+            throw new Error('Network response was not ok');
         }
         
-        // Remove the document element from UI
-        const docElement = document.querySelector(`.document-item[data-id="${documentId}"]`);
-        if (docElement) {
-            docElement.remove();
-        }
-        
-        // Reload documents to ensure sync
+        // Reload the documents list
         loadDocuments();
     })
     .catch(error => {
@@ -679,119 +585,97 @@ function deleteDocument(documentId) {
     });
 }
 
-// Handle modal window outside click to close
-window.addEventListener('click', (e) => {
-    if (e.target === uploadModal) {
-        uploadModal.style.display = 'none';
-    }
-});
-
-// Incidents List Functions
-function loadIncidents() {
+// Function to render the incidents list
+function renderIncidentsList(incidents) {
     const incidentsList = document.getElementById('incidents-list');
     if (!incidentsList) return;
-
-    fetch('/api/incidents/')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(incidents => {
-            renderIncidentsList(incidents);
-        })
-        .catch(error => {
-            console.error('Error loading incidents:', error);
-            incidentsList.innerHTML = '<div class="loading-incidents">Failed to load incidents. Please try again.</div>';
-        });
-}
-
-function renderIncidentsList(incidents) {
-    const incidentsListEl = document.getElementById('incidents-list');
-    if (!incidentsListEl) return;
     
-    // Empty the list first
-    incidentsListEl.innerHTML = '';
-    
-    if (!incidents || incidents.length === 0) {
-        incidentsListEl.innerHTML = '<div class="loading-incidents">No incidents reported yet.</div>';
+    if (incidents.length === 0) {
+        incidentsList.innerHTML = '<div class="loading-incidents">No incidents available.</div>';
         return;
     }
     
-    // Add each incident to the list
-    incidents.forEach(incident => {
-        const incidentEl = document.createElement('div');
-        incidentEl.className = 'incident-item';
-        incidentEl.setAttribute('data-id', incident.id);
+    // Sort incidents by severity and status
+    // Critical/High severity open incidents first, then medium, then low
+    incidents.sort((a, b) => {
+        // First sort by status (open > in-progress > resolved)
+        const statusOrder = { 'open': 0, 'in-progress': 1, 'resolved': 2 };
+        const statusA = statusOrder[a.status.toLowerCase().replace(' ', '-')] || 99;
+        const statusB = statusOrder[b.status.toLowerCase().replace(' ', '-')] || 99;
         
-        // Determine severity class and icon
-        let severityClass = 'medium';
-        let severityIcon = incident.status === 'resolved' ? 'check-circle' : 'alert-triangle';
+        if (statusA !== statusB) return statusA - statusB;
         
-        if (incident.severity === 'high' && incident.status !== 'resolved') {
-            severityClass = 'high';
-            severityIcon = 'alert-circle';
-        } else if (incident.severity === 'low' && incident.status !== 'resolved') {
-            severityClass = 'low';
-            severityIcon = 'alert-octagon';
-        }
+        // Then by severity (high > medium > low)
+        const severityOrder = { 'high': 0, 'medium': 1, 'low': 2 };
+        const sevA = severityOrder[a.severity.toLowerCase()] || 99;
+        const sevB = severityOrder[b.severity.toLowerCase()] || 99;
         
-        // Format status for display
-        const statusClass = incident.status.toLowerCase().replace(' ', '-');
-        const statusDisplay = incident.status.charAt(0).toUpperCase() + incident.status.slice(1);
+        if (sevA !== sevB) return sevA - sevB;
         
-        incidentEl.innerHTML = `
-            <div class="incident-icon ${severityClass}">
-                <i data-feather="${severityIcon}"></i>
-            </div>
-            <div class="incident-title">${incident.title}</div>
-            <div class="incident-status ${statusClass}">${statusDisplay}</div>
-        `;
-        
-        // Add click event to show incident details
-        incidentEl.addEventListener('click', () => {
-            showIncidentDetails(incident);
-            highlightIncident(incidentEl);
-        });
-        
-        incidentsListEl.appendChild(incidentEl);
+        // Finally by creation date (newest first)
+        return new Date(b.created_at) - new Date(a.created_at);
     });
     
-    // Reinitialize Feather icons
-    feather.replace();
+    let html = '';
+    incidents.forEach(incident => {
+        const severityClass = incident.severity.toLowerCase();
+        const statusClass = incident.status.toLowerCase().replace(' ', '-');
+        
+        html += `
+            <div class="incident-item" data-id="${incident.id}" onclick="showIncidentDetails(${JSON.stringify(incident).replace(/"/g, '&quot;')}); highlightIncident(this);">
+                <div class="incident-severity ${severityClass}">${incident.severity}</div>
+                <div class="incident-title">${incident.title}</div>
+                <div class="incident-status ${statusClass}">${incident.status}</div>
+                <div class="incident-time">${new Date(incident.created_at).toLocaleString()}</div>
+            </div>
+        `;
+    });
+    
+    incidentsList.innerHTML = html;
 }
 
-// Load incidents initially and refresh periodically
-loadIncidents();
-setInterval(loadIncidents, 30000); // Refresh every 30 seconds
-
-// Handle escape key to close modal
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && uploadModal.style.display === 'block') {
-        uploadModal.style.display = 'none';
-    }
-});
+// Function to show incident details when clicked
 function showIncidentDetails(incident) {
     const detailsContainer = document.getElementById('incident-details');
-    const currentIncidentId = incident.id;
+    if (!detailsContainer) return;
     
-    // Generate the details HTML with summary information included
-    detailsContainer.innerHTML = `
+    // Store current incident ID for status updates
+    window.currentIncidentId = incident.id;
+    
+    // Format the date
+    const createdDate = new Date(incident.created_at).toLocaleString();
+    const updatedDate = new Date(incident.updated_at).toLocaleString();
+    
+    // Generate impact summary
+    const impactSummary = getIncidentImpactSummary(incident);
+    
+    // Create the HTML for the incident details
+    let html = `
         <h3>${incident.title}</h3>
-        <div class="incident-details-meta">
-            <span class="${incident.severity.toLowerCase()}">Severity: ${incident.severity}</span>
-            <span class="${incident.status.toLowerCase().replace(' ', '-')}">Status: ${incident.status}</span>
+        <div class="incident-detail-row">
+            <div class="incident-severity ${incident.severity.toLowerCase()}">${incident.severity}</div>
+            <div class="incident-status ${incident.status.toLowerCase().replace(' ', '-')}">${incident.status}</div>
         </div>
-        <p>${incident.description}</p>
-        <div class="incident-summary-section">
-            <h4>Incident Summary</h4>
-            <p>This ${incident.severity} severity incident is currently ${incident.status}.</p>
-            <p>${getIncidentImpactSummary(incident)}</p>
+        <div class="incident-description">${incident.description}</div>
+        <div class="incident-impact">${impactSummary}</div>
+        <div class="incident-timestamps">
+            <div>Created: ${createdDate}</div>
+            <div>Last Updated: ${updatedDate}</div>
         </div>
-        <div class="incident-timestamp">Reported: ${new Date(incident.created_at).toLocaleString()}</div>
-        
-        <!-- Status Update Controls -->
+    `;
+    
+    // Add comments section if available
+    if (incident.comments) {
+        html += `
+            <div class="incident-comments">
+                <h4>Comments:</h4>
+                <div class="comments-content">${incident.comments}</div>
+            </div>
+        `;
+    }
+    
+    // Add status update controls
+    html += `
         <div id="incident-status-controls" class="incident-status-update" style="display: flex;">
             <label for="status-select">Status:</label>
             <select id="status-select" class="status-select">
@@ -804,7 +688,8 @@ function showIncidentDetails(incident) {
     `;
     
     // Get the newly created status controls
-    const statusControlsDiv = document.getElementById('incident-status-controls');
+    detailsContainer.innerHTML = html;
+    
     const statusSelect = document.getElementById('status-select');
     
     // Set current status as selected
@@ -1279,3 +1164,4 @@ function renderLogsList(logs) {
     });
     
     logsList.innerHTML = html;
+}
