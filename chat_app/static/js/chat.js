@@ -5,6 +5,7 @@ const chatInput = document.getElementById('chat-input');
 const newChatBtn = document.getElementById('new-chat-btn');
 const uploadBtn = document.getElementById('upload-document-btn');
 const uploadModal = document.getElementById('upload-modal');
+const statusUpdateModal = document.getElementById('status-update-modal');
 const uploadForm = document.getElementById('document-upload-form');
 const uploadStatus = document.getElementById('upload-status');
 const closeModalBtns = document.querySelectorAll('.modal-close, .modal-close-btn');
@@ -790,11 +791,13 @@ function showIncidentDetails(incident) {
     
     // Show the status update controls
     if (statusControlsDiv) {
+        console.log("Found status controls div:", statusControlsDiv);
         statusControlsDiv.style.display = 'flex';
         const statusSelect = document.getElementById('status-select');
         
         // Set current status as selected
         if (statusSelect) {
+            console.log("Found status select:", statusSelect);
             // Convert status to lowercase and replace spaces with hyphens to match option values
             const currentStatus = incident.status.toLowerCase().replace(' ', '-');
             
