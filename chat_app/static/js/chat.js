@@ -922,18 +922,96 @@ function updateIncidentStatus(incidentId, newStatus) {
 }
 
 // Function to update a single incident in the list
+function updateIncidentStatus(incidentId, newStatus) {
+    fetch(`/api/incidents/${incidentId}/`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({ status: newStatus })
+    })
+    .then(response => response.json())
+    .then(updatedIncident => {
+        updateIncidentInList(updatedIncident);
+    })
+    .catch(error => console.error('Error updating incident status:', error));
+}
+
 function updateIncidentInList(updatedIncident) {
     const incidentElement = document.querySelector(`.incident-item[data-id="${updatedIncident.id}"]`);
     if (incidentElement) {
         const statusElement = incidentElement.querySelector('.incident-status');
         if (statusElement) {
-            // Update the status class and text
             const oldStatusClass = statusElement.className.split(' ')[1];
             const newStatusClass = updatedIncident.status.toLowerCase().replace(' ', '-');
             statusElement.classList.remove(oldStatusClass);
             statusElement.classList.add(newStatusClass);
             statusElement.textContent = updatedIncident.status;
         }
+    }
+}
+
+function renderIncidentsList(incidents) {
+    const incidentsListEl = document.getElementById('incidents-list');
+    if (!incidentsListEl) return;
+    
+    incidentsListEl.innerHTML = '';
+    
+    if (!incidents || incidents.length === 0) {
+        incidentsListEl.innerHTML = '<div class="loading-incidents">No incidents reported yet.</div>';
+        return;
+    }
+    
+    incidents.forEach(incident => {
+        const incidentEl = document.createElement('div');
+        incidentEl.className = 'incident-item';
+        incidentEl.setAttribute('data-id', incident.id);
+        
+        let severityClass = 'medium';
+        let severityIcon = incident.status === 'resolved' ? 'check-circle' : 'alert-triangle';
+        
+        if (incident.severity === 'high' && incident.status !== 'resolved') {
+            severityClass = 'high';
+            severityIcon = 'alert-circle';
+        } else if (incident.severity === 'low' && incident.status !== 'resolved') {
+            severityClass = 'low';
+            severityIcon = 'alert-octagon';
+        }
+        
+        const statusClass = incident.status.toLowerCase().replace(' ', '-');
+        const statusDisplay = incident.status.charAt(0).toUpperCase() + incident.status.slice(1);
+        
+        // Add status selection dropdown
+        const statusOptions = ['open', 'in-progress', 'resolved'];
+        const statusDropdown = `
+            <select class="status-select" onchange="updateIncidentStatus('${incident.id}', this.value)">
+                ${statusOptions.map(status => 
+                    `<option value="${status}" ${incident.status === status ? 'selected' : ''}>
+                        ${status.charAt(0).toUpperCase() + status.slice(1)}
+                    </option>`
+                ).join('')}
+            </select>
+        `;
+        
+        incidentEl.innerHTML = `
+            <div class="incident-icon ${severityClass}">
+                <i data-feather="${severityIcon}"></i>
+            </div>
+            <div class="incident-content">
+                <div class="incident-title">${incident.title}</div>
+                <div class="incident-status ${statusClass}">
+                    ${statusDropdown}
+                </div>
+            </div>
+        `;
+        
+        incidentsListEl.appendChild(incidentEl);
+    });
+    
+    // Refresh Feather icons
+    if (window.feather) {
+        feather.replace();
     }
 }
 
