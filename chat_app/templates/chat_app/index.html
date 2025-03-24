@@ -1,40 +1,38 @@
 {% extends "chat_app/base.html" %}
 
 {% block content %}
-<div class="chat-container">
-    <div class="chat-header">
-        <h2 id="current-chat-title">{{ current_conversation.title }}</h2>
-        <div class="chat-actions">
-            <button id="rename-chat-btn" class="icon-btn" title="Rename conversation">
-                <i data-feather="edit-2"></i>
-            </button>
-            <button id="delete-chat-btn" class="icon-btn" title="Delete conversation">
-                <i data-feather="trash-2"></i>
+<div class="chat-header">
+    <h2 id="current-chat-title">{{ current_conversation.title }}</h2>
+    <div class="chat-actions">
+        <button id="rename-chat-btn" class="icon-btn" title="Rename conversation">
+            <i data-feather="edit-2"></i>
+        </button>
+        <button id="delete-chat-btn" class="icon-btn" title="Delete conversation">
+            <i data-feather="trash-2"></i>
+        </button>
+    </div>
+</div>
+
+<div id="chat-messages" class="chat-messages">
+    <!-- Messages will be loaded here -->
+</div>
+
+<div class="chat-input-container">
+    <form id="chat-form">
+        <div class="chat-input-wrapper">
+            <textarea 
+                id="chat-input" 
+                placeholder="Ask a question or type @automation/@datasource to see available options..." 
+                rows="1"
+            ></textarea>
+            <button type="submit" class="send-btn" title="Send message">
+                <i data-feather="send"></i>
             </button>
         </div>
-    </div>
-    
-    <div id="chat-messages" class="chat-messages">
-        <!-- Messages will be loaded here -->
-    </div>
-    
-    <div class="chat-input-container">
-        <form id="chat-form">
-            <div class="chat-input-wrapper">
-                <textarea 
-                    id="chat-input" 
-                    placeholder="Ask a question or type @automation/@datasource to see available options..." 
-                    rows="1"
-                ></textarea>
-                <button type="submit" class="send-btn" title="Send message">
-                    <i data-feather="send"></i>
-                </button>
-            </div>
-            <div class="input-helpers">
-                <span class="helper-text">Use <code>@automation</code> to trigger automations or <code>@datasource</code> to query data sources</span>
-            </div>
-        </form>
-    </div>
+        <div class="input-helpers">
+            <span class="helper-text">Use <code>@automation</code> to trigger automations or <code>@datasource</code> to query data sources</span>
+        </div>
+    </form>
 </div>
 {% endblock %}
 
