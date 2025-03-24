@@ -780,72 +780,14 @@ function highlightIncident(element) {
 }
 
 function updateIncidentsSummary(incidents) {
-    const summaryContainer = document.getElementById('summary-content');
-    
-    if (!summaryContainer) return;
-    
-    // Count incidents by status
-    const stats = {
-        total: incidents.length,
-        open: incidents.filter(i => i.status === 'open').length,
-        inProgress: incidents.filter(i => i.status === 'in-progress').length,
-        resolved: incidents.filter(i => i.status === 'resolved').length
-    };
-    
-    // Calculate by severity
-    const severityStats = {
-        high: incidents.filter(i => i.severity === 'high').length,
-        medium: incidents.filter(i => i.severity === 'medium').length,
-        low: incidents.filter(i => i.severity === 'low').length
-    };
-    
-    summaryContainer.innerHTML = `
-        <div class="summary-stats">
-            <div class="stat-item">
-                <div class="stat-number">${stats.total}</div>
-                <div class="stat-label">Total</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number">${stats.open}</div>
-                <div class="stat-label">Open</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number">${stats.inProgress}</div>
-                <div class="stat-label">In Progress</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number">${stats.resolved}</div>
-                <div class="stat-label">Resolved</div>
-            </div>
-        </div>
-        <div class="summary-separator"></div>
-        <div class="severity-stats">
-            <div class="severity-item high">
-                <span class="severity-label">High:</span>
-                <span class="severity-count">${severityStats.high}</span>
-            </div>
-            <div class="severity-item medium">
-                <span class="severity-label">Medium:</span>
-                <span class="severity-count">${severityStats.medium}</span>
-            </div>
-            <div class="severity-item low">
-                <span class="severity-label">Low:</span>
-                <span class="severity-count">${severityStats.low}</span>
-            </div>
-        </div>
-    `;
-    
-    // Add AI-generated summary later using OpenAI service
+    // We're now handling all of this in getIncidentsSummaryFromAI
     getIncidentsSummaryFromAI(incidents);
 }
 
 // Function to get AI-generated summary of incidents
 function getIncidentsSummaryFromAI(incidents) {
-    const summaryContentEl = document.getElementById('summary-content');
+    const summaryContentEl = document.getElementById('incident-summary');
     if (!summaryContentEl) return;
-    
-    // Clear previous content
-    summaryContentEl.innerHTML = '';
     
     // Add short summary of incidents (3-4 lines)
     let openIncidents = incidents.filter(inc => inc.status === 'open').length;
@@ -853,44 +795,43 @@ function getIncidentsSummaryFromAI(incidents) {
     let resolvedIncidents = incidents.filter(inc => inc.status === 'resolved').length;
     let highSeverityIncidents = incidents.filter(inc => inc.severity === 'high').length;
     
-    // Create the summary element first with stats
-    const summaryStatsEl = document.createElement('div');
-    summaryStatsEl.className = 'summary-stats';
-    summaryStatsEl.innerHTML = `
-        <div class="severity-stats">
-            <div class="severity-item high">
-                <span>High Severity</span>
-                <span>${highSeverityIncidents}</span>
+    // Create the HTML for the incident summary section
+    let summaryHTML = `
+        <h3>Incidents Overview</h3>
+        <div class="summary-content">
+            <div class="summary-stats">
+                <div class="severity-stats">
+                    <div class="severity-item high">
+                        <span>High Severity</span>
+                        <span>${highSeverityIncidents}</span>
+                    </div>
+                    <div class="severity-item">
+                        <span>Open Incidents</span>
+                        <span>${openIncidents}</span>
+                    </div>
+                    <div class="severity-item">
+                        <span>In Progress</span>
+                        <span>${inProgressIncidents}</span>
+                    </div>
+                    <div class="severity-item">
+                        <span>Resolved</span>
+                        <span>${resolvedIncidents}</span>
+                    </div>
+                </div>
             </div>
-            <div class="severity-item">
-                <span>Open Incidents</span>
-                <span>${openIncidents}</span>
-            </div>
-            <div class="severity-item">
-                <span>In Progress</span>
-                <span>${inProgressIncidents}</span>
-            </div>
-            <div class="severity-item">
-                <span>Resolved</span>
-                <span>${resolvedIncidents}</span>
-            </div>
-        </div>
+            
+            <div class="incidents-brief">
+                <h4>Recent Incidents</h4>
     `;
-    summaryContentEl.appendChild(summaryStatsEl);
-    
-    // Add a short text summary of each incident (3-4 lines only)
-    const incidentSummaryEl = document.createElement('div');
-    incidentSummaryEl.className = 'incidents-brief';
     
     // Pick recent incidents and create a brief summary
     const recentIncidents = incidents.slice(0, 3); // Just show 3 most recent
-    let incidentSummaryHtml = '<h4>Recent Incidents</h4>';
     
     recentIncidents.forEach(incident => {
         let statusClass = incident.status.replace(/\s+/g, '-');
         let severityClass = incident.severity;
         
-        incidentSummaryHtml += `
+        summaryHTML += `
             <div class="incident-brief ${severityClass}">
                 <span class="incident-brief-title">${incident.title}</span>
                 <span class="incident-brief-status ${statusClass}">${incident.status}</span>
@@ -898,8 +839,16 @@ function getIncidentsSummaryFromAI(incidents) {
         `;
     });
     
-    incidentSummaryEl.innerHTML = incidentSummaryHtml;
-    summaryContentEl.appendChild(incidentSummaryEl);
+    summaryHTML += `
+            </div>
+            <div class="summary-note">
+                <p>Select an incident for details</p>
+            </div>
+        </div>
+    `;
+    
+    // Update the summary container with our HTML
+    summaryContentEl.innerHTML = summaryHTML;
 }
 
 // Update loadIncidents function to include summary
