@@ -861,7 +861,6 @@ function loadIncidents() {
         })
         .then(incidents => {
             renderIncidentsList(incidents);
-            updateIncidentsSummary(incidents);
         })
         .catch(error => {
             console.error('Error loading incidents:', error);
