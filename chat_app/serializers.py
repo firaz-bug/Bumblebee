@@ -46,5 +46,5 @@ class AutomationSerializer(serializers.ModelSerializer):
 class IncidentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Incident
-        fields = ['id', 'title', 'description', 'severity', 'status', 'created_at', 'updated_at']
+        fields = ['id', 'title', 'description', 'severity', 'status', 'comments', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']

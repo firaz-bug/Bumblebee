@@ -792,7 +792,14 @@ function showIncidentDetails(incident) {
             // Add new event listener
             newUpdateBtn.addEventListener('click', () => {
                 const newStatus = document.getElementById('status-select').value;
-                updateIncidentStatus(currentIncidentId, newStatus);
+                
+                // Store the current incident ID and status in the form for later use
+                const statusModal = document.getElementById('status-update-modal');
+                statusModal.dataset.incidentId = currentIncidentId;
+                statusModal.dataset.newStatus = newStatus;
+                
+                // Show the comments modal
+                statusModal.style.display = 'block';
             });
         }
     }
@@ -842,13 +849,23 @@ function highlightIncident(element) {
 }
 
 // Function to update incident status
-function updateIncidentStatus(incidentId, newStatus) {
+function updateIncidentStatus(incidentId, newStatus, comments = '') {
     // Format the status value for the API (convert to title case)
     let apiStatus = newStatus.replace(/-/g, ' ').replace(/\w\S*/g, 
         function(txt) {
             return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
         }
     );
+    
+    // Prepare request data
+    const requestData = {
+        status: apiStatus
+    };
+    
+    // Add comments if provided
+    if (comments) {
+        requestData.comments = comments;
+    }
     
     // Send PUT request to update incident
     fetch(`/api/incidents/${incidentId}/`, {
@@ -857,9 +874,7 @@ function updateIncidentStatus(incidentId, newStatus) {
             'Content-Type': 'application/json',
             'X-CSRFToken': getCSRFToken()
         },
-        body: JSON.stringify({
-            status: apiStatus
-        })
+        body: JSON.stringify(requestData)
     })
     .then(response => {
         if (!response.ok) {

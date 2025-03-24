@@ -470,6 +470,25 @@
                 <div id="upload-status" class="upload-status"></div>
             </div>
         </div>
+        
+        <!-- Incident Status Update Modal -->
+        <div id="status-update-modal" class="modal">
+            <div class="modal-content">
+                <span class="modal-close">&times;</span>
+                <h2>Update Incident Status</h2>
+                <p>Please provide comments about this status update:</p>
+                <form id="status-update-form">
+                    <div class="form-group">
+                        <label for="status-comments">Comments</label>
+                        <textarea id="status-comments" name="comments" rows="4" placeholder="Describe the reason for this status change..." required></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn primary-btn">Submit</button>
+                        <button type="button" class="btn secondary-btn modal-close-btn">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
     <script>

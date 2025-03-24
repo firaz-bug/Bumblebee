@@ -447,9 +447,14 @@ def incident_detail(request, incident_id):
         return Response(response_data)
     
     elif request.method == 'PUT':
-        # For updating status only, allow partial updates
-        if 'status' in request.data and len(request.data) == 1:
+        # For updating status with comments
+        if 'status' in request.data:
             incident.status = request.data['status']
+            
+            # Add comments if provided
+            if 'comments' in request.data:
+                incident.comments = request.data['comments']
+                
             incident.save()
             serializer = IncidentSerializer(incident)
             return Response(serializer.data)
