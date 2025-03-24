@@ -749,23 +749,33 @@ function showIncidentDetails(incident) {
     
     // Generate the details HTML with summary information included
     detailsContainer.innerHTML = `
-        <h3>${incident.title}</h3>
-        <div class="incident-details-meta">
-            <span class="${incident.severity.toLowerCase()}">Severity: ${incident.severity}</span>
-            <span class="${incident.status.toLowerCase().replace(' ', '-')}">Status: ${incident.status}</span>
+        <div class="incident-details-content">
+            <h3>${incident.title}</h3>
+            <div class="incident-details-meta">
+                <span class="${incident.severity.toLowerCase()}">Severity: ${incident.severity}</span>
+                <span class="${incident.status.toLowerCase().replace(' ', '-')}">Status: ${incident.status}</span>
+            </div>
+            <p>${incident.description}</p>
+            <div class="incident-summary-section">
+                <h4>Incident Summary</h4>
+                <p>This ${incident.severity} severity incident is currently ${incident.status}.</p>
+                <p>${getIncidentImpactSummary(incident)}</p>
+            </div>
+            <div class="incident-timestamp">Reported: ${new Date(incident.created_at).toLocaleString()}</div>
         </div>
-        <p>${incident.description}</p>
-        <div class="incident-summary-section">
-            <h4>Incident Summary</h4>
-            <p>This ${incident.severity} severity incident is currently ${incident.status}.</p>
-            <p>${getIncidentImpactSummary(incident)}</p>
-        </div>
-        <div class="incident-timestamp">Reported: ${new Date(incident.created_at).toLocaleString()}</div>
     `;
     
-    // Show the status update controls
+    // Move the status controls inside the details container for better positioning
     if (statusControlsDiv) {
+        // First, remove it from its current position
+        statusControlsDiv.parentNode.removeChild(statusControlsDiv);
+        
+        // Then append it to the details container
+        detailsContainer.appendChild(statusControlsDiv);
+        
+        // Now show it
         statusControlsDiv.style.display = 'flex';
+        
         const statusSelect = document.getElementById('status-select');
         
         // Set current status as selected
@@ -813,8 +823,6 @@ function showIncidentDetails(incident) {
         .catch(error => {
             console.error('Error fetching incident recommendations:', error);
         });
-    
-    // We keep the incidents overview visible
 }
 
 // Helper function to generate impact summary based on incident severity and status
