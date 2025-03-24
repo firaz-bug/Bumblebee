@@ -740,7 +740,7 @@ document.addEventListener('keydown', (e) => {
 function showIncidentDetails(incident) {
     const detailsContainer = document.getElementById('incident-details');
     
-    // Generate the details HTML with summary information included
+    // Generate the details HTML without summary information
     detailsContainer.innerHTML = `
         <h3>${incident.title}</h3>
         <div class="incident-details-meta">
@@ -748,44 +748,10 @@ function showIncidentDetails(incident) {
             <span class="${incident.status.toLowerCase().replace(' ', '-')}">Status: ${incident.status}</span>
         </div>
         <p>${incident.description}</p>
-        <div class="incident-summary-section">
-            <h4>Incident Summary</h4>
-            <p>This ${incident.severity} severity incident is currently ${incident.status}.</p>
-            <p>${getIncidentImpactSummary(incident)}</p>
-        </div>
         <div class="incident-timestamp">Reported: ${new Date(incident.created_at).toLocaleString()}</div>
     `;
     
-    // Clear the incidents overview from summary container when an incident is selected
-    clearIncidentsOverview();
-}
-
-// Helper function to generate impact summary based on incident severity and status
-function getIncidentImpactSummary(incident) {
-    if (incident.severity === 'high' && incident.status === 'open') {
-        return 'This incident requires immediate attention as it may be causing significant service disruption.';
-    } else if (incident.severity === 'high' && incident.status === 'resolved') {
-        return 'This critical incident has been resolved. A post-mortem analysis is recommended.';
-    } else if (incident.severity === 'medium') {
-        return 'This incident has moderate impact on services and should be addressed promptly.';
-    } else if (incident.severity === 'low') {
-        return 'This is a low-impact incident that should be monitored but is not causing significant issues.';
-    } else {
-        return 'Monitor this incident for any changes or escalations that may require attention.';
-    }
-}
-
-// Clear the incidents overview from summary container
-function clearIncidentsOverview() {
-    const summaryContainer = document.getElementById('incident-summary');
-    if (summaryContainer) {
-        summaryContainer.innerHTML = `
-            <h3>Selected Incident</h3>
-            <div class="summary-content">
-                <p class="select-prompt">Details shown in the section above</p>
-            </div>
-        `;
-    }
+    // We no longer clear the incidents overview - it remains visible
 }
 
 function highlightIncident(element) {
@@ -807,7 +773,8 @@ function updateIncidentsSummary(incidents) {
     let resolvedIncidents = incidents.filter(inc => inc.status === 'resolved').length;
     let highSeverityIncidents = incidents.filter(inc => inc.severity === 'high').length;
     
-    summaryContainer.innerHTML = `
+    // Create the HTML for the incident summary section
+    let summaryHTML = `
         <h3>Incidents Overview</h3>
         <div class="summary-content">
             <div class="summary-stats">
@@ -826,43 +793,6 @@ function updateIncidentsSummary(incidents) {
                 <div class="severity-item">
                     <span>Resolved</span>
                     <span>${resolvedIncidents}</span>
-                </div>
-            </div>
-        </div>
-    `;
-}
-function getIncidentsSummaryFromAI(incidents) {
-    const summaryContentEl = document.getElementById('incident-summary');
-    if (!summaryContentEl) return;
-    
-    // Add short summary of incidents (3-4 lines)
-    let openIncidents = incidents.filter(inc => inc.status === 'open').length;
-    let inProgressIncidents = incidents.filter(inc => inc.status === 'in-progress').length;
-    let resolvedIncidents = incidents.filter(inc => inc.status === 'resolved').length;
-    let highSeverityIncidents = incidents.filter(inc => inc.severity === 'high').length;
-    
-    // Create the HTML for the incident summary section
-    let summaryHTML = `
-        <h3>Incidents Overview</h3>
-        <div class="summary-content">
-            <div class="summary-stats">
-                <div class="severity-stats">
-                    <div class="severity-item high">
-                        <span>High Severity</span>
-                        <span>${highSeverityIncidents}</span>
-                    </div>
-                    <div class="severity-item">
-                        <span>Open Incidents</span>
-                        <span>${openIncidents}</span>
-                    </div>
-                    <div class="severity-item">
-                        <span>In Progress</span>
-                        <span>${inProgressIncidents}</span>
-                    </div>
-                    <div class="severity-item">
-                        <span>Resolved</span>
-                        <span>${resolvedIncidents}</span>
-                    </div>
                 </div>
             </div>
             
@@ -894,7 +824,7 @@ function getIncidentsSummaryFromAI(incidents) {
     `;
     
     // Update the summary container with our HTML
-    summaryContentEl.innerHTML = summaryHTML;
+    summaryContainer.innerHTML = summaryHTML;
 }
 
 // Update loadIncidents function to include summary
