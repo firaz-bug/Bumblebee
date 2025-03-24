@@ -761,6 +761,23 @@ function showIncidentDetails(incident) {
         <div class="incident-timestamp">Reported: ${new Date(incident.created_at).toLocaleString()}</div>
     `;
     
+    // Fetch incident details with recommendations
+    fetch(`/api/incidents/${incident.id}/`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Update recommendations based on incident
+            updateRecommendedAutomations(data.recommended_automations || []);
+            updateRecommendedDashboards(data.recommended_dashboards || []);
+        })
+        .catch(error => {
+            console.error('Error fetching incident recommendations:', error);
+        });
+    
     // We keep the incidents overview visible
 }
 
@@ -895,6 +912,39 @@ function loadAutomations() {
         });
 }
 
+// Function to update recommended automations based on incident selection
+function updateRecommendedAutomations(automations) {
+    const automationsList = document.getElementById('automations-list');
+    if (!automationsList) return;
+    
+    // If no recommended automations, show message
+    if (!automations || automations.length === 0) {
+        automationsList.innerHTML = '<div class="empty-state">No relevant automations found for this incident</div>';
+        return;
+    }
+    
+    let html = '<h4>Recommended Automations</h4>';
+    automations.forEach(automation => {
+        html += `
+            <div class="automation-item recommended" data-id="${automation.id}">
+                <div class="automation-name">${automation.name}</div>
+                <div class="automation-description">${automation.description}</div>
+                <button class="run-btn" data-id="${automation.id}">Run</button>
+            </div>
+        `;
+    });
+    
+    automationsList.innerHTML = html;
+    
+    // Add event listeners to run buttons
+    document.querySelectorAll('.automation-item .run-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const automationId = this.dataset.id;
+            triggerAutomation(automationId);
+        });
+    });
+}
+
 // Function to render the automations list
 function renderAutomationsList(automations) {
     const automationsList = document.getElementById('automations-list');
@@ -971,6 +1021,34 @@ function loadDashboards() {
             console.error('Error loading dashboards:', error);
             dashboardsList.innerHTML = '<div class="loading-dashboards">Failed to load dashboards. Please try again.</div>';
         });
+}
+
+// Function to update recommended dashboards based on incident selection
+function updateRecommendedDashboards(dashboards) {
+    const dashboardsList = document.getElementById('dashboards-list');
+    if (!dashboardsList) return;
+    
+    // If no recommended dashboards, show message
+    if (!dashboards || dashboards.length === 0) {
+        dashboardsList.innerHTML = '<div class="empty-state">No relevant dashboards found for this incident</div>';
+        return;
+    }
+    
+    let html = '<h4>Recommended Dashboards</h4>';
+    dashboards.forEach(dashboard => {
+        html += `
+            <div class="dashboard-item recommended">
+                <div class="dashboard-name">${dashboard.name}</div>
+                <div class="dashboard-description">${dashboard.description}</div>
+                <a href="${dashboard.link}" target="_blank" class="dashboard-link">Open Dashboard <i data-feather="external-link"></i></a>
+            </div>
+        `;
+    });
+    
+    dashboardsList.innerHTML = html;
+    
+    // Initialize feather icons
+    feather.replace();
 }
 
 // Function to render the dashboards list

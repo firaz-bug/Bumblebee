@@ -12,6 +12,9 @@
     --color-hover: #f0f0f0;
     --color-error: #dc3545;
     --color-success: #28a745;
+    --color-wells-fargo-red: #D71E28;
+    --color-recommended-bg: #fff8e6;
+    --color-recommended-border: #ffb74d;
 
     /* Spacing */
     --spacing-xs: 0.25rem;
