@@ -48,8 +48,23 @@
         </aside>
 
         <div class="empty-space">
-            <div class="empty-space-top"></div>
-            <div class="empty-space-bottom"></div>
+            <div class="empty-space-top" id="incident-details-container">
+                <div class="incident-details" style="display: none;">
+                    <h3 id="incident-title"></h3>
+                    <div class="incident-details-meta">
+                        <span id="incident-severity"></span>
+                        <span id="incident-status"></span>
+                    </div>
+                    <p id="incident-description"></p>
+                </div>
+            </div>
+            <div class="empty-space-bottom">
+                <div class="incident-summary">
+                    <h3>Incidents Summary</h3>
+                    <div class="summary-stats" id="incidents-summary">
+                    </div>
+                </div>
+            </div>
         </div>
 
         <main class="main-content">

@@ -716,8 +716,8 @@ function renderIncidentsList(incidents) {
         
         // Add click event to show incident details
         incidentEl.addEventListener('click', () => {
-            // Future enhancement: show incident details in a modal or dedicated view
-            console.log('Incident clicked:', incident.id);
+            showIncidentDetails(incident);
+            highlightIncident(incidentEl);
         });
         
         incidentsListEl.appendChild(incidentEl);
@@ -737,3 +737,75 @@ document.addEventListener('keydown', (e) => {
         uploadModal.style.display = 'none';
     }
 });
+function showIncidentDetails(incident) {
+    const detailsContainer = document.querySelector('.incident-details');
+    const title = document.getElementById('incident-title');
+    const severity = document.getElementById('incident-severity');
+    const status = document.getElementById('incident-status');
+    const description = document.getElementById('incident-description');
+
+    detailsContainer.style.display = 'block';
+    title.textContent = incident.title;
+    severity.textContent = `Severity: ${incident.severity}`;
+    severity.className = incident.severity.toLowerCase();
+    status.textContent = `Status: ${incident.status}`;
+    status.className = incident.status.toLowerCase().replace(' ', '-');
+    description.textContent = incident.description;
+}
+
+function highlightIncident(element) {
+    // Remove highlight from other incidents
+    document.querySelectorAll('.incident-item').forEach(item => {
+        item.style.backgroundColor = 'white';
+    });
+    // Highlight clicked incident
+    element.style.backgroundColor = '#f0f0f0';
+}
+
+function updateIncidentsSummary(incidents) {
+    const summaryContainer = document.getElementById('incidents-summary');
+    
+    // Count incidents by status
+    const stats = {
+        total: incidents.length,
+        open: incidents.filter(i => i.status === 'open').length,
+        resolved: incidents.filter(i => i.status === 'resolved').length
+    };
+    
+    summaryContainer.innerHTML = `
+        <div class="stat-item">
+            <div class="stat-number">${stats.total}</div>
+            <div class="stat-label">Total Incidents</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">${stats.open}</div>
+            <div class="stat-label">Open</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">${stats.resolved}</div>
+            <div class="stat-label">Resolved</div>
+        </div>
+    `;
+}
+
+// Update loadIncidents function to include summary
+function loadIncidents() {
+    const incidentsList = document.getElementById('incidents-list');
+    if (!incidentsList) return;
+
+    fetch('/api/incidents/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(incidents => {
+            renderIncidentsList(incidents);
+            updateIncidentsSummary(incidents);
+        })
+        .catch(error => {
+            console.error('Error loading incidents:', error);
+            incidentsList.innerHTML = '<div class="loading-incidents">Failed to load incidents. Please try again.</div>';
+        });
+}
