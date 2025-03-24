@@ -1,15 +1,13 @@
 from django.contrib import admin
 from .models import Document, Conversation, Message, Automation, Incident, DataSource
 
-@admin.register(Document)
-
 @admin.register(DataSource)
 class DataSourceAdmin(admin.ModelAdmin):
     list_display = ('name', 'endpoint', 'auth_required', 'created_at')
     search_fields = ('name', 'description', 'endpoint')
     list_filter = ('auth_required', 'created_at')
 
-
+@admin.register(Document)
 class DocumentAdmin(admin.ModelAdmin):
     list_display = ('title', 'file_type', 'uploaded_at')
     search_fields = ('title', 'content')
