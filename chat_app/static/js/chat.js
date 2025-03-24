@@ -744,6 +744,8 @@ document.addEventListener('keydown', (e) => {
 });
 function showIncidentDetails(incident) {
     const detailsContainer = document.getElementById('incident-details');
+    const statusControlsDiv = document.getElementById('incident-status-controls');
+    const currentIncidentId = incident.id;
     
     // Generate the details HTML with summary information included
     detailsContainer.innerHTML = `
@@ -760,6 +762,40 @@ function showIncidentDetails(incident) {
         </div>
         <div class="incident-timestamp">Reported: ${new Date(incident.created_at).toLocaleString()}</div>
     `;
+    
+    // Show the status update controls
+    if (statusControlsDiv) {
+        statusControlsDiv.style.display = 'flex';
+        const statusSelect = document.getElementById('status-select');
+        
+        // Set current status as selected
+        if (statusSelect) {
+            // Convert status to lowercase and replace spaces with hyphens to match option values
+            const currentStatus = incident.status.toLowerCase().replace(' ', '-');
+            
+            // Find and select the matching option
+            for (let i = 0; i < statusSelect.options.length; i++) {
+                if (statusSelect.options[i].value === currentStatus) {
+                    statusSelect.selectedIndex = i;
+                    break;
+                }
+            }
+        }
+        
+        // Set up event listener for the update button
+        const updateButton = document.getElementById('update-status-btn');
+        if (updateButton) {
+            // Remove previous event listeners by cloning and replacing
+            const newUpdateBtn = updateButton.cloneNode(true);
+            updateButton.parentNode.replaceChild(newUpdateBtn, updateButton);
+            
+            // Add new event listener
+            newUpdateBtn.addEventListener('click', () => {
+                const newStatus = document.getElementById('status-select').value;
+                updateIncidentStatus(currentIncidentId, newStatus);
+            });
+        }
+    }
     
     // Fetch incident details with recommendations
     fetch(`/api/incidents/${incident.id}/`)
@@ -803,6 +839,94 @@ function highlightIncident(element) {
     });
     // Highlight clicked incident
     element.style.backgroundColor = '#f0f0f0';
+}
+
+// Function to update incident status
+function updateIncidentStatus(incidentId, newStatus) {
+    // Format the status value for the API (convert to title case)
+    let apiStatus = newStatus.replace(/-/g, ' ').replace(/\w\S*/g, 
+        function(txt) {
+            return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+        }
+    );
+    
+    // Send PUT request to update incident
+    fetch(`/api/incidents/${incidentId}/`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify({
+            status: apiStatus
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to update incident status');
+        }
+        return response.json();
+    })
+    .then(updatedIncident => {
+        // Update the UI with the new incident data
+        showIncidentDetails(updatedIncident);
+        
+        // Also update the incident in the list
+        updateIncidentInList(updatedIncident);
+        
+        // Show success message
+        const detailsContainer = document.getElementById('incident-details');
+        const successMsg = document.createElement('div');
+        successMsg.className = 'status-update-success';
+        successMsg.textContent = `Status updated to ${apiStatus}`;
+        successMsg.style.color = 'green';
+        successMsg.style.marginTop = '10px';
+        detailsContainer.appendChild(successMsg);
+        
+        // Remove success message after 3 seconds
+        setTimeout(() => {
+            if (successMsg.parentNode) {
+                successMsg.parentNode.removeChild(successMsg);
+            }
+        }, 3000);
+        
+        // Reload the incidents list to reflect the updates
+        loadIncidents();
+    })
+    .catch(error => {
+        console.error('Error updating incident status:', error);
+        // Show error message
+        const detailsContainer = document.getElementById('incident-details');
+        const errorMsg = document.createElement('div');
+        errorMsg.className = 'status-update-error';
+        errorMsg.textContent = 'Failed to update status. Please try again.';
+        errorMsg.style.color = 'red';
+        errorMsg.style.marginTop = '10px';
+        detailsContainer.appendChild(errorMsg);
+        
+        // Remove error message after 3 seconds
+        setTimeout(() => {
+            if (errorMsg.parentNode) {
+                errorMsg.parentNode.removeChild(errorMsg);
+            }
+        }, 3000);
+    });
+}
+
+// Function to update a single incident in the list
+function updateIncidentInList(updatedIncident) {
+    const incidentElement = document.querySelector(`.incident-item[data-id="${updatedIncident.id}"]`);
+    if (incidentElement) {
+        const statusElement = incidentElement.querySelector('.incident-status');
+        if (statusElement) {
+            // Update the status class and text
+            const oldStatusClass = statusElement.className.split(' ')[1];
+            const newStatusClass = updatedIncident.status.toLowerCase().replace(' ', '-');
+            statusElement.classList.remove(oldStatusClass);
+            statusElement.classList.add(newStatusClass);
+            statusElement.textContent = updatedIncident.status;
+        }
+    }
 }
 
 function updateIncidentsSummary(incidents) {
