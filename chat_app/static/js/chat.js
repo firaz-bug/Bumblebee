@@ -798,11 +798,39 @@ function highlightIncident(element) {
 }
 
 function updateIncidentsSummary(incidents) {
-    // We're now handling all of this in getIncidentsSummaryFromAI
-    getIncidentsSummaryFromAI(incidents);
+    const summaryContainer = document.getElementById('incident-summary');
+    if (!summaryContainer) return;
+    
+    // Count incidents by status and severity
+    let openIncidents = incidents.filter(inc => inc.status === 'open').length;
+    let inProgressIncidents = incidents.filter(inc => inc.status === 'in-progress').length;
+    let resolvedIncidents = incidents.filter(inc => inc.status === 'resolved').length;
+    let highSeverityIncidents = incidents.filter(inc => inc.severity === 'high').length;
+    
+    summaryContainer.innerHTML = `
+        <h3>Incidents Overview</h3>
+        <div class="summary-content">
+            <div class="summary-stats">
+                <div class="severity-item high">
+                    <span>High Severity</span>
+                    <span>${highSeverityIncidents}</span>
+                </div>
+                <div class="severity-item">
+                    <span>Open</span>
+                    <span>${openIncidents}</span>
+                </div>
+                <div class="severity-item">
+                    <span>In Progress</span>
+                    <span>${inProgressIncidents}</span>
+                </div>
+                <div class="severity-item">
+                    <span>Resolved</span>
+                    <span>${resolvedIncidents}</span>
+                </div>
+            </div>
+        </div>
+    `;
 }
-
-// Function to get AI-generated summary of incidents
 function getIncidentsSummaryFromAI(incidents) {
     const summaryContentEl = document.getElementById('incident-summary');
     if (!summaryContentEl) return;
