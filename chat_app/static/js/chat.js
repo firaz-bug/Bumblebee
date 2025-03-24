@@ -826,69 +826,62 @@ function getIncidentsSummaryFromAI(incidents) {
     const summaryContentEl = document.getElementById('summary-content');
     if (!summaryContentEl) return;
     
-    // Add a text section below the stats for the AI summary
-    const aiSummaryEl = document.createElement('div');
-    aiSummaryEl.className = 'ai-summary';
-    aiSummaryEl.innerHTML = '<div class="loading-summary">Generating AI summary...</div>';
-    summaryContentEl.appendChild(aiSummaryEl);
+    // Clear previous content
+    summaryContentEl.innerHTML = '';
     
-    // Prepare the incidents data for the API
-    const incidentsData = incidents.map(inc => ({
-        id: inc.id,
-        title: inc.title,
-        description: inc.description,
-        severity: inc.severity,
-        status: inc.status,
-        created_at: inc.created_at
-    }));
+    // Add short summary of incidents (3-4 lines)
+    let openIncidents = incidents.filter(inc => inc.status === 'open').length;
+    let inProgressIncidents = incidents.filter(inc => inc.status === 'in-progress').length;
+    let resolvedIncidents = incidents.filter(inc => inc.status === 'resolved').length;
+    let highSeverityIncidents = incidents.filter(inc => inc.severity === 'high').length;
     
-    // Create a conversation context for the AI to summarize the incidents
-    fetch('/api/conversations/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCSRFToken()
-        },
-        body: JSON.stringify({ title: 'Incident Summary Analysis' })
-    })
-    .then(response => response.json())
-    .then(conversation => {
-        // Send the incidents data to the API for summarization
-        return fetch(`/api/conversations/${conversation.id}/messages/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCSRFToken()
-            },
-            body: JSON.stringify({
-                role: 'user',
-                content: `Please analyze these incidents and provide a brief summary of the current state, highlighting patterns and critical issues: ${JSON.stringify(incidentsData)}`
-            })
-        });
-    })
-    .then(response => response.json())
-    .then(message => {
-        // Get the assistant's response
-        const conversationId = message.conversation;
-        return fetch(`/api/conversations/${conversationId}/messages/`);
-    })
-    .then(response => response.json())
-    .then(messages => {
-        // Find the assistant's response message
-        const assistantMessage = messages.find(msg => msg.role === 'assistant');
-        if (assistantMessage) {
-            aiSummaryEl.innerHTML = `
-                <h4>AI Analysis</h4>
-                <div class="ai-summary-content">${assistantMessage.content}</div>
-            `;
-        } else {
-            aiSummaryEl.innerHTML = '<div class="summary-error">AI summary is not available at this time.</div>';
-        }
-    })
-    .catch(error => {
-        console.error('Error generating AI summary:', error);
-        aiSummaryEl.innerHTML = '<div class="summary-error">Failed to generate AI summary.</div>';
+    // Create the summary element first with stats
+    const summaryStatsEl = document.createElement('div');
+    summaryStatsEl.className = 'summary-stats';
+    summaryStatsEl.innerHTML = `
+        <div class="severity-stats">
+            <div class="severity-item high">
+                <span>High Severity</span>
+                <span>${highSeverityIncidents}</span>
+            </div>
+            <div class="severity-item">
+                <span>Open Incidents</span>
+                <span>${openIncidents}</span>
+            </div>
+            <div class="severity-item">
+                <span>In Progress</span>
+                <span>${inProgressIncidents}</span>
+            </div>
+            <div class="severity-item">
+                <span>Resolved</span>
+                <span>${resolvedIncidents}</span>
+            </div>
+        </div>
+    `;
+    summaryContentEl.appendChild(summaryStatsEl);
+    
+    // Add a short text summary of each incident (3-4 lines only)
+    const incidentSummaryEl = document.createElement('div');
+    incidentSummaryEl.className = 'incidents-brief';
+    
+    // Pick recent incidents and create a brief summary
+    const recentIncidents = incidents.slice(0, 3); // Just show 3 most recent
+    let incidentSummaryHtml = '<h4>Recent Incidents</h4>';
+    
+    recentIncidents.forEach(incident => {
+        let statusClass = incident.status.replace(/\s+/g, '-');
+        let severityClass = incident.severity;
+        
+        incidentSummaryHtml += `
+            <div class="incident-brief ${severityClass}">
+                <span class="incident-brief-title">${incident.title}</span>
+                <span class="incident-brief-status ${statusClass}">${incident.status}</span>
+            </div>
+        `;
     });
+    
+    incidentSummaryEl.innerHTML = incidentSummaryHtml;
+    summaryContentEl.appendChild(incidentSummaryEl);
 }
 
 // Update loadIncidents function to include summary
