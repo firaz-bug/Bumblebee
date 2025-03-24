@@ -6,9 +6,9 @@ from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Document, Conversation, Message, Automation, Incident, DataSource
+from .models import Document, Conversation, Message, Automation, Incident, DataSource, Dashboard, Log
 from .forms import DocumentUploadForm
-from .serializers import DocumentSerializer, ConversationSerializer, MessageSerializer, AutomationSerializer, IncidentSerializer, DataSourceSerializer
+from .serializers import DocumentSerializer, ConversationSerializer, MessageSerializer, AutomationSerializer, IncidentSerializer, DataSourceSerializer, DashboardSerializer, LogSerializer
 from .utils.document_processor import process_document
 from .utils.vector_store import VectorStore
 from .utils.llm_service import LLMService

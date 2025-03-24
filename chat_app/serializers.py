@@ -1,11 +1,23 @@
 from rest_framework import serializers
-from .models import Document, Conversation, Message, Automation, Incident, DataSource
+from .models import Document, Conversation, Message, Automation, Incident, DataSource, Dashboard, Log
 
 class DataSourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = DataSource
         fields = ['id', 'name', 'description', 'endpoint', 'parameters', 'auth_required', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
+        
+class DashboardSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Dashboard
+        fields = ['id', 'name', 'description', 'link', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+        
+class LogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Log
+        fields = ['id', 'message', 'level', 'source', 'timestamp']
+        read_only_fields = ['id', 'timestamp']
 
 class DocumentSerializer(serializers.ModelSerializer):
     class Meta:

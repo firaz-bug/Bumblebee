@@ -1,11 +1,23 @@
 from django.contrib import admin
-from .models import Document, Conversation, Message, Automation, Incident, DataSource
+from .models import Document, Conversation, Message, Automation, Incident, DataSource, Dashboard, Log
 
 @admin.register(DataSource)
 class DataSourceAdmin(admin.ModelAdmin):
     list_display = ('name', 'endpoint', 'auth_required', 'created_at')
     search_fields = ('name', 'description', 'endpoint')
     list_filter = ('auth_required', 'created_at')
+    
+@admin.register(Dashboard)
+class DashboardAdmin(admin.ModelAdmin):
+    list_display = ('name', 'link', 'created_at')
+    search_fields = ('name', 'description')
+    list_filter = ('created_at',)
+
+@admin.register(Log)
+class LogAdmin(admin.ModelAdmin):
+    list_display = ('level', 'source', 'message', 'timestamp')
+    search_fields = ('message', 'source')
+    list_filter = ('level', 'timestamp')
 
 @admin.register(Document)
 class DocumentAdmin(admin.ModelAdmin):
