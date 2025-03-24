@@ -99,21 +99,29 @@
         
         /* Incidents column sections */
         .incident-details {
-            height: 25%;
+            height: 35%;
             padding: 1rem;
             border-bottom: 1px solid var(--color-border);
             overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .incident-details-content {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 1rem;
         }
         
         .incident-summary {
-            height: 25%;
+            height: 10%;
             padding: 1rem;
             border-bottom: 1px solid var(--color-border);
             overflow-y: auto;
         }
         
         .incidents-section {
-            height: 50%;
+            height: 55%;
             padding: 1rem;
             overflow-y: auto;
         }
@@ -248,6 +256,13 @@
             display: flex;
             align-items: center;
             margin-top: 1rem;
+            background-color: var(--wf-light-gray);
+            padding: 0.75rem;
+            border-radius: 4px;
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
         }
         
         .status-select {
@@ -256,6 +271,7 @@
             border: 1px solid var(--color-border);
             border-radius: 4px;
             background-color: white;
+            flex-grow: 1;
         }
         
         .update-status-btn {
@@ -266,6 +282,7 @@
             border: none;
             border-radius: 4px;
             cursor: pointer;
+            font-weight: bold;
         }
         
         .chat-header {
