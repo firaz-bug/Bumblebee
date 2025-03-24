@@ -107,7 +107,6 @@ class Incident(models.Model):
     description = models.TextField()
     severity = models.CharField(max_length=20)
     status = models.CharField(max_length=20)
-    comments = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
