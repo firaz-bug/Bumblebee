@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 class VectorStore:
     """
     Vector store using FAISS or Chroma for storing document embeddings.
+    Also provides vector stores for automations and dashboards to support intelligent recommendations.
     """
     
     def __init__(self, persist_directory):
@@ -24,6 +25,8 @@ class VectorStore:
         """
         self.persist_directory = persist_directory
         self.documents_info_path = os.path.join(persist_directory, 'documents_info.json')
+        self.automations_info_path = os.path.join(persist_directory, 'automations_info.json')
+        self.dashboards_info_path = os.path.join(persist_directory, 'dashboards_info.json')
         self.initialized = False
         # This will be set from the outside by views.py
         self.openai_service = None
@@ -36,6 +39,15 @@ class VectorStore:
             # This will allow testing the application without requiring embedding models
             self.documents_by_id = {}
             self.document_texts = []
+            
+            # Initialize automation and dashboard vector stores
+            self.automations_by_id = {}
+            self.automation_texts = []
+            self.automations_info = {}
+            
+            self.dashboards_by_id = {}
+            self.dashboard_texts = []
+            self.dashboards_info = {}
             
             # Load document info if it exists
             if os.path.exists(self.documents_info_path):
@@ -50,6 +62,32 @@ class VectorStore:
                 # Save empty document info
                 with open(self.documents_info_path, 'w') as f:
                     json.dump(self.documents_info, f)
+            
+            # Load automations info if it exists
+            if os.path.exists(self.automations_info_path):
+                with open(self.automations_info_path, 'r') as f:
+                    self.automations_info = json.load(f)
+                    
+                auto_count = len(self.automations_info)
+                logger.info(f"Loaded {auto_count} automations info from disk")
+            else:
+                self.automations_info = {}
+                # Save empty automations info
+                with open(self.automations_info_path, 'w') as f:
+                    json.dump(self.automations_info, f)
+            
+            # Load dashboards info if it exists
+            if os.path.exists(self.dashboards_info_path):
+                with open(self.dashboards_info_path, 'r') as f:
+                    self.dashboards_info = json.load(f)
+                    
+                dash_count = len(self.dashboards_info)
+                logger.info(f"Loaded {dash_count} dashboards info from disk")
+            else:
+                self.dashboards_info = {}
+                # Save empty dashboards info
+                with open(self.dashboards_info_path, 'w') as f:
+                    json.dump(self.dashboards_info, f)
                     
             # Initialize in-memory document store
             self.initialized = True

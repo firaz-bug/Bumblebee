@@ -161,10 +161,9 @@
         }
         
         /* Chat layout */
-        .chat-container {
+        .main-content {
             display: flex;
-            height: 100%;
-            width: 100%;
+            flex-direction: column;
         }
         
         .sidebar {
@@ -173,6 +172,8 @@
             display: flex;
             flex-direction: column;
             background-color: var(--color-bg-secondary);
+            height: 70%;
+            float: left;
         }
         
         .chat-content {
@@ -180,6 +181,11 @@
             display: flex;
             flex-direction: column;
             height: 100%;
+            position: absolute;
+            right: 0;
+            top: 72px;
+            bottom: 0;
+            overflow-y: auto;
         }
         
         .chat-header {
@@ -258,7 +264,7 @@
             </div>
         </aside>
 
-        <!-- Recommendations column -->
+        <!-- Middle column for recommendations -->
         <aside class="recommendations-column">
             <div class="automations-section">
                 <h3>Automation Recommendations</h3>
@@ -285,44 +291,41 @@
             </div>
         </aside>
         
-        <!-- Main chat content area -->
+        <!-- Right column for chat content and conversations -->
         <main class="main-content">
-            <div class="chat-container">
-                <!-- Left sidebar within main content -->
-                <div class="sidebar">
-                    <div class="sidebar-header">
-                        <h1 class="app-title">Chat Assistant</h1>
-                        <button id="new-chat-btn" class="new-chat-btn">
-                            <i data-feather="plus"></i> New Chat
-                        </button>
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <h1 class="app-title">Chat Assistant</h1>
+                    <button id="new-chat-btn" class="new-chat-btn">
+                        <i data-feather="plus"></i> New Chat
+                    </button>
+                </div>
+                <div class="conversations-list">
+                    <!-- Conversation list will be populated here -->
+                    {% for conversation in conversations %}
+                    <div class="conversation-item {% if conversation.id == current_conversation.id %}active{% endif %}" data-id="{{ conversation.id }}">
+                        <i data-feather="message-square"></i>
+                        <span class="conversation-title">{{ conversation.title }}</span>
                     </div>
-                    <div class="conversations-list">
-                        <!-- Conversation list will be populated here -->
-                        {% for conversation in conversations %}
-                        <div class="conversation-item {% if conversation.id == current_conversation.id %}active{% endif %}" data-id="{{ conversation.id }}">
-                            <i data-feather="message-square"></i>
-                            <span class="conversation-title">{{ conversation.title }}</span>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    <div class="documents-list-container">
-                        <h3>Documents</h3>
-                        <div id="documents-list" class="documents-list">
-                            <!-- Documents will be loaded here -->
-                            <div class="loading-documents">Loading documents...</div>
-                        </div>
-                    </div>
-                    <div class="sidebar-footer">
-                        <button id="upload-document-btn" class="upload-btn">
-                            <i data-feather="upload"></i> Upload Document
-                        </button>
+                    {% endfor %}
+                </div>
+                <div class="documents-list-container">
+                    <h3>Documents</h3>
+                    <div id="documents-list" class="documents-list">
+                        <!-- Documents will be loaded here -->
+                        <div class="loading-documents">Loading documents...</div>
                     </div>
                 </div>
-                
-                <!-- Chat content area -->
-                <div class="chat-content">
-                    {% block content %}{% endblock %}
+                <div class="sidebar-footer">
+                    <button id="upload-document-btn" class="upload-btn">
+                        <i data-feather="upload"></i> Upload Document
+                    </button>
                 </div>
+            </div>
+            
+            <!-- Chat content area -->
+            <div class="chat-content">
+                {% block content %}{% endblock %}
             </div>
         </main>
 
