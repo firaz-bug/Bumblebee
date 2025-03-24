@@ -749,33 +749,23 @@ function showIncidentDetails(incident) {
     
     // Generate the details HTML with summary information included
     detailsContainer.innerHTML = `
-        <div class="incident-details-content">
-            <h3>${incident.title}</h3>
-            <div class="incident-details-meta">
-                <span class="${incident.severity.toLowerCase()}">Severity: ${incident.severity}</span>
-                <span class="${incident.status.toLowerCase().replace(' ', '-')}">Status: ${incident.status}</span>
-            </div>
-            <p>${incident.description}</p>
-            <div class="incident-summary-section">
-                <h4>Incident Summary</h4>
-                <p>This ${incident.severity} severity incident is currently ${incident.status}.</p>
-                <p>${getIncidentImpactSummary(incident)}</p>
-            </div>
-            <div class="incident-timestamp">Reported: ${new Date(incident.created_at).toLocaleString()}</div>
+        <h3>${incident.title}</h3>
+        <div class="incident-details-meta">
+            <span class="${incident.severity.toLowerCase()}">Severity: ${incident.severity}</span>
+            <span class="${incident.status.toLowerCase().replace(' ', '-')}">Status: ${incident.status}</span>
         </div>
+        <p>${incident.description}</p>
+        <div class="incident-summary-section">
+            <h4>Incident Summary</h4>
+            <p>This ${incident.severity} severity incident is currently ${incident.status}.</p>
+            <p>${getIncidentImpactSummary(incident)}</p>
+        </div>
+        <div class="incident-timestamp">Reported: ${new Date(incident.created_at).toLocaleString()}</div>
     `;
     
-    // Move the status controls inside the details container for better positioning
+    // Show the status update controls
     if (statusControlsDiv) {
-        // First, remove it from its current position
-        statusControlsDiv.parentNode.removeChild(statusControlsDiv);
-        
-        // Then append it to the details container
-        detailsContainer.appendChild(statusControlsDiv);
-        
-        // Now show it
         statusControlsDiv.style.display = 'flex';
-        
         const statusSelect = document.getElementById('status-select');
         
         // Set current status as selected
@@ -823,6 +813,8 @@ function showIncidentDetails(incident) {
         .catch(error => {
             console.error('Error fetching incident recommendations:', error);
         });
+    
+    // We keep the incidents overview visible
 }
 
 // Helper function to generate impact summary based on incident severity and status
@@ -850,39 +842,7 @@ function highlightIncident(element) {
 }
 
 // Function to update incident status
-function showStatusChangeModal(incidentId, newStatus) {
-    const modal = document.createElement('div');
-    modal.className = 'status-change-modal';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <h3>Update Status</h3>
-            <p>Please provide comments for this status change:</p>
-            <textarea id="status-comments" rows="4" placeholder="Enter your comments..."></textarea>
-            <div class="modal-buttons">
-                <button class="cancel-btn">Cancel</button>
-                <button class="confirm-btn">Update Status</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-
-    // Add event listeners
-    const cancelBtn = modal.querySelector('.cancel-btn');
-    const confirmBtn = modal.querySelector('.confirm-btn');
-    const textarea = modal.querySelector('#status-comments');
-
-    cancelBtn.addEventListener('click', () => {
-        document.body.removeChild(modal);
-    });
-
-    confirmBtn.addEventListener('click', () => {
-        const comments = textarea.value;
-        updateIncidentStatus(incidentId, newStatus, comments);
-        document.body.removeChild(modal);
-    });
-}
-
-function updateIncidentStatus(incidentId, newStatus, comments) {
+function updateIncidentStatus(incidentId, newStatus) {
     // Format the status value for the API (convert to title case)
     let apiStatus = newStatus.replace(/-/g, ' ').replace(/\w\S*/g, 
         function(txt) {
@@ -898,8 +858,7 @@ function updateIncidentStatus(incidentId, newStatus, comments) {
             'X-CSRFToken': getCSRFToken()
         },
         body: JSON.stringify({
-            status: apiStatus,
-            comments: comments
+            status: apiStatus
         })
     })
     .then(response => {
@@ -955,96 +914,18 @@ function updateIncidentStatus(incidentId, newStatus, comments) {
 }
 
 // Function to update a single incident in the list
-function updateIncidentStatus(incidentId, newStatus) {
-    fetch(`/api/incidents/${incidentId}/`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-        },
-        body: JSON.stringify({ status: newStatus })
-    })
-    .then(response => response.json())
-    .then(updatedIncident => {
-        updateIncidentInList(updatedIncident);
-    })
-    .catch(error => console.error('Error updating incident status:', error));
-}
-
 function updateIncidentInList(updatedIncident) {
     const incidentElement = document.querySelector(`.incident-item[data-id="${updatedIncident.id}"]`);
     if (incidentElement) {
         const statusElement = incidentElement.querySelector('.incident-status');
         if (statusElement) {
+            // Update the status class and text
             const oldStatusClass = statusElement.className.split(' ')[1];
             const newStatusClass = updatedIncident.status.toLowerCase().replace(' ', '-');
             statusElement.classList.remove(oldStatusClass);
             statusElement.classList.add(newStatusClass);
             statusElement.textContent = updatedIncident.status;
         }
-    }
-}
-
-function renderIncidentsList(incidents) {
-    const incidentsListEl = document.getElementById('incidents-list');
-    if (!incidentsListEl) return;
-    
-    incidentsListEl.innerHTML = '';
-    
-    if (!incidents || incidents.length === 0) {
-        incidentsListEl.innerHTML = '<div class="loading-incidents">No incidents reported yet.</div>';
-        return;
-    }
-    
-    incidents.forEach(incident => {
-        const incidentEl = document.createElement('div');
-        incidentEl.className = 'incident-item';
-        incidentEl.setAttribute('data-id', incident.id);
-        
-        let severityClass = 'medium';
-        let severityIcon = incident.status === 'resolved' ? 'check-circle' : 'alert-triangle';
-        
-        if (incident.severity === 'high' && incident.status !== 'resolved') {
-            severityClass = 'high';
-            severityIcon = 'alert-circle';
-        } else if (incident.severity === 'low' && incident.status !== 'resolved') {
-            severityClass = 'low';
-            severityIcon = 'alert-octagon';
-        }
-        
-        const statusClass = incident.status.toLowerCase().replace(' ', '-');
-        const statusDisplay = incident.status.charAt(0).toUpperCase() + incident.status.slice(1);
-        
-        // Add status selection dropdown
-        const statusOptions = ['open', 'in-progress', 'resolved'];
-        const statusDropdown = `
-            <select class="status-select" onchange="updateIncidentStatus('${incident.id}', this.value)">
-                ${statusOptions.map(status => 
-                    `<option value="${status}" ${incident.status === status ? 'selected' : ''}>
-                        ${status.charAt(0).toUpperCase() + status.slice(1)}
-                    </option>`
-                ).join('')}
-            </select>
-        `;
-        
-        incidentEl.innerHTML = `
-            <div class="incident-icon ${severityClass}">
-                <i data-feather="${severityIcon}"></i>
-            </div>
-            <div class="incident-content">
-                <div class="incident-title">${incident.title}</div>
-                <div class="incident-status ${statusClass}">
-                    ${statusDropdown}
-                </div>
-            </div>
-        `;
-        
-        incidentsListEl.appendChild(incidentEl);
-    });
-    
-    // Refresh Feather icons
-    if (window.feather) {
-        feather.replace();
     }
 }
 
