@@ -820,6 +820,75 @@ function updateIncidentsSummary(incidents) {
     // Add AI-generated summary later using OpenAI service
     getIncidentsSummaryFromAI(incidents);
 }
+
+// Function to get AI-generated summary of incidents
+function getIncidentsSummaryFromAI(incidents) {
+    const summaryContentEl = document.getElementById('summary-content');
+    if (!summaryContentEl) return;
+    
+    // Add a text section below the stats for the AI summary
+    const aiSummaryEl = document.createElement('div');
+    aiSummaryEl.className = 'ai-summary';
+    aiSummaryEl.innerHTML = '<div class="loading-summary">Generating AI summary...</div>';
+    summaryContentEl.appendChild(aiSummaryEl);
+    
+    // Prepare the incidents data for the API
+    const incidentsData = incidents.map(inc => ({
+        id: inc.id,
+        title: inc.title,
+        description: inc.description,
+        severity: inc.severity,
+        status: inc.status,
+        created_at: inc.created_at
+    }));
+    
+    // Create a conversation context for the AI to summarize the incidents
+    fetch('/api/conversations/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify({ title: 'Incident Summary Analysis' })
+    })
+    .then(response => response.json())
+    .then(conversation => {
+        // Send the incidents data to the API for summarization
+        return fetch(`/api/conversations/${conversation.id}/messages/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({
+                role: 'user',
+                content: `Please analyze these incidents and provide a brief summary of the current state, highlighting patterns and critical issues: ${JSON.stringify(incidentsData)}`
+            })
+        });
+    })
+    .then(response => response.json())
+    .then(message => {
+        // Get the assistant's response
+        const conversationId = message.conversation;
+        return fetch(`/api/conversations/${conversationId}/messages/`);
+    })
+    .then(response => response.json())
+    .then(messages => {
+        // Find the assistant's response message
+        const assistantMessage = messages.find(msg => msg.role === 'assistant');
+        if (assistantMessage) {
+            aiSummaryEl.innerHTML = `
+                <h4>AI Analysis</h4>
+                <div class="ai-summary-content">${assistantMessage.content}</div>
+            `;
+        } else {
+            aiSummaryEl.innerHTML = '<div class="summary-error">AI summary is not available at this time.</div>';
+        }
+    })
+    .catch(error => {
+        console.error('Error generating AI summary:', error);
+        aiSummaryEl.innerHTML = '<div class="summary-error">Failed to generate AI summary.</div>';
+    });
 }
 
 // Update loadIncidents function to include summary

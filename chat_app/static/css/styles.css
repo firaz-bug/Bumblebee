@@ -851,3 +851,78 @@ button, input, textarea {
     font-size: 13px;
     color: var(--color-text-light);
 }
+
+/* Incidents Summary Styles */
+.summary-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.summary-separator {
+    height: 1px;
+    background-color: var(--color-border);
+    margin: 15px 0;
+}
+
+.severity-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.severity-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.severity-item.high {
+    background-color: rgba(255, 82, 82, 0.1);
+    color: #ff5252;
+}
+
+.severity-item.medium {
+    background-color: rgba(255, 152, 0, 0.1);
+    color: #ff9800;
+}
+
+.severity-item.low {
+    background-color: rgba(76, 175, 80, 0.1);
+    color: #4caf50;
+}
+
+.ai-summary {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: var(--color-accent);
+    border-radius: 6px;
+}
+
+.ai-summary h4 {
+    margin: 0 0 8px 0;
+    font-size: 15px;
+    color: var(--color-primary);
+}
+
+.ai-summary-content {
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.summary-error {
+    color: var(--color-error);
+    font-style: italic;
+    font-size: 13px;
+}
+
+.incident-timestamp {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--color-secondary);
+    font-style: italic;
+}
