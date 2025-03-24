@@ -83,7 +83,11 @@ newChatBtn.addEventListener('click', createNewConversation);
 uploadBtn.addEventListener('click', () => uploadModal.style.display = 'block');
 uploadForm.addEventListener('submit', handleDocumentUpload);
 closeModalBtns.forEach(btn => {
-    btn.addEventListener('click', () => uploadModal.style.display = 'none');
+    btn.addEventListener('click', function() {
+        // Close all modals
+        if (uploadModal) uploadModal.style.display = 'none';
+        if (statusUpdateModal) statusUpdateModal.style.display = 'none';
+    });
 });
 renameChatBtn.addEventListener('click', renameConversation);
 deleteChatBtn.addEventListener('click', deleteConversation);
@@ -770,7 +774,6 @@ document.addEventListener('keydown', (e) => {
 });
 function showIncidentDetails(incident) {
     const detailsContainer = document.getElementById('incident-details');
-    const statusControlsDiv = document.getElementById('incident-status-controls');
     const currentIncidentId = incident.id;
     
     // Generate the details HTML with summary information included
@@ -787,12 +790,21 @@ function showIncidentDetails(incident) {
             <p>${getIncidentImpactSummary(incident)}</p>
         </div>
         <div class="incident-timestamp">Reported: ${new Date(incident.created_at).toLocaleString()}</div>
+        
+        <!-- Status Update Controls -->
+        <div id="incident-status-controls" class="incident-status-update" style="display: flex;">
+            <label for="status-select">Status:</label>
+            <select id="status-select" class="status-select">
+                <option value="open">Open</option>
+                <option value="in-progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+            </select>
+            <button id="update-status-btn" class="update-status-btn">Update</button>
+        </div>
     `;
     
-    // Show the status update controls
-    if (statusControlsDiv) {
-        console.log("Found status controls div:", statusControlsDiv);
-        statusControlsDiv.style.display = 'flex';
+    // Get the newly created status controls
+    const statusControlsDiv = document.getElementById('incident-status-controls');
         const statusSelect = document.getElementById('status-select');
         
         // Set current status as selected
