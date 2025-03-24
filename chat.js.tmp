@@ -1279,3 +1279,4 @@ function renderLogsList(logs) {
     });
     
     logsList.innerHTML = html;
+}
