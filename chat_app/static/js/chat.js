@@ -740,7 +740,7 @@ document.addEventListener('keydown', (e) => {
 function showIncidentDetails(incident) {
     const detailsContainer = document.getElementById('incident-details');
     
-    // Generate the details HTML
+    // Generate the details HTML with summary information included
     detailsContainer.innerHTML = `
         <h3>${incident.title}</h3>
         <div class="incident-details-meta">
@@ -748,23 +748,41 @@ function showIncidentDetails(incident) {
             <span class="${incident.status.toLowerCase().replace(' ', '-')}">Status: ${incident.status}</span>
         </div>
         <p>${incident.description}</p>
+        <div class="incident-summary-section">
+            <h4>Incident Summary</h4>
+            <p>This ${incident.severity} severity incident is currently ${incident.status}.</p>
+            <p>${getIncidentImpactSummary(incident)}</p>
+        </div>
         <div class="incident-timestamp">Reported: ${new Date(incident.created_at).toLocaleString()}</div>
     `;
     
-    // Update the summary section to show only this incident's summary
+    // Clear the incidents overview from summary container when an incident is selected
+    clearIncidentsOverview();
+}
+
+// Helper function to generate impact summary based on incident severity and status
+function getIncidentImpactSummary(incident) {
+    if (incident.severity === 'high' && incident.status === 'open') {
+        return 'This incident requires immediate attention as it may be causing significant service disruption.';
+    } else if (incident.severity === 'high' && incident.status === 'resolved') {
+        return 'This critical incident has been resolved. A post-mortem analysis is recommended.';
+    } else if (incident.severity === 'medium') {
+        return 'This incident has moderate impact on services and should be addressed promptly.';
+    } else if (incident.severity === 'low') {
+        return 'This is a low-impact incident that should be monitored but is not causing significant issues.';
+    } else {
+        return 'Monitor this incident for any changes or escalations that may require attention.';
+    }
+}
+
+// Clear the incidents overview from summary container
+function clearIncidentsOverview() {
     const summaryContainer = document.getElementById('incident-summary');
     if (summaryContainer) {
         summaryContainer.innerHTML = `
-            <h3>Incident Summary</h3>
+            <h3>Selected Incident</h3>
             <div class="summary-content">
-                <div class="ai-summary">
-                    <h4>Current Incident</h4>
-                    <div class="ai-summary-content">
-                        <p><strong>${incident.title}</strong> (${incident.severity} severity, ${incident.status})</p>
-                        <p>${incident.description}</p>
-                        <p class="incident-timestamp">Last updated: ${new Date(incident.updated_at || incident.created_at).toLocaleString()}</p>
-                    </div>
-                </div>
+                <p class="select-prompt">Details shown in the section above</p>
             </div>
         `;
     }
