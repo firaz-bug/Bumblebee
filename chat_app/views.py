@@ -447,11 +447,19 @@ def incident_detail(request, incident_id):
         return Response(response_data)
     
     elif request.method == 'PUT':
-        serializer = IncidentSerializer(incident, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
+        # For updating status only, allow partial updates
+        if 'status' in request.data and len(request.data) == 1:
+            incident.status = request.data['status']
+            incident.save()
+            serializer = IncidentSerializer(incident)
             return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # For full updates
+        else:
+            serializer = IncidentSerializer(incident, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     elif request.method == 'DELETE':
         incident.delete()

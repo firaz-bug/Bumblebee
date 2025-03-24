@@ -962,27 +962,6 @@ function updateIncidentsSummary(incidents) {
                 </div>
             </div>
             
-            <div class="incidents-brief">
-                <h4>Recent Incidents</h4>
-    `;
-    
-    // Pick recent incidents and create a brief summary
-    const recentIncidents = incidents.slice(0, 3); // Just show 3 most recent
-    
-    recentIncidents.forEach(incident => {
-        let statusClass = incident.status.replace(/\s+/g, '-');
-        let severityClass = incident.severity;
-        
-        summaryHTML += `
-            <div class="incident-brief ${severityClass}">
-                <span class="incident-brief-title">${incident.title}</span>
-                <span class="incident-brief-status ${statusClass}">${incident.status}</span>
-            </div>
-        `;
-    });
-    
-    summaryHTML += `
-            </div>
             <div class="summary-note">
                 <p>Select an incident for details</p>
             </div>
