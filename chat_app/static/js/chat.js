@@ -48,6 +48,31 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Setup auto-resize for textarea
     setupTextareaAutoResize();
+    
+    // Setup status update form submission
+    const statusUpdateForm = document.getElementById('status-update-form');
+    if (statusUpdateForm) {
+        statusUpdateForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Get incident ID and new status from the modal's dataset
+            const statusModal = document.getElementById('status-update-modal');
+            const incidentId = statusModal.dataset.incidentId;
+            const newStatus = statusModal.dataset.newStatus;
+            
+            // Get comments from the form
+            const comments = document.getElementById('status-comments').value;
+            
+            // Update incident status with comments
+            updateIncidentStatus(incidentId, newStatus, comments);
+            
+            // Hide the modal
+            statusModal.style.display = 'none';
+            
+            // Clear form
+            document.getElementById('status-comments').value = '';
+        });
+    }
 });
 
 // Event Listeners
