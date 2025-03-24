@@ -435,3 +435,56 @@ def incident_detail(request, incident_id):
     elif request.method == 'DELETE':
         incident.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+        
+@api_view(['GET', 'POST'])
+def dashboards(request):
+    """API endpoint for listing and creating dashboards."""
+    if request.method == 'GET':
+        dashboards = Dashboard.objects.all().order_by('name')
+        serializer = DashboardSerializer(dashboards, many=True)
+        return Response(serializer.data)
+    
+    elif request.method == 'POST':
+        serializer = DashboardSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET', 'PUT', 'DELETE'])
+def dashboard_detail(request, dashboard_id):
+    """API endpoint for retrieving, updating and deleting dashboards."""
+    try:
+        dashboard = Dashboard.objects.get(pk=dashboard_id)
+    except Dashboard.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+    
+    if request.method == 'GET':
+        serializer = DashboardSerializer(dashboard)
+        return Response(serializer.data)
+    
+    elif request.method == 'PUT':
+        serializer = DashboardSerializer(dashboard, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    elif request.method == 'DELETE':
+        dashboard.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+        
+@api_view(['GET', 'POST'])
+def logs(request):
+    """API endpoint for listing and creating logs."""
+    if request.method == 'GET':
+        logs = Log.objects.all().order_by('-timestamp')[:100]  # Limit to last 100 logs
+        serializer = LogSerializer(logs, many=True)
+        return Response(serializer.data)
+    
+    elif request.method == 'POST':
+        serializer = LogSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

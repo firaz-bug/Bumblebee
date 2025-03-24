@@ -16,22 +16,69 @@
         .incidents-column {
             width: 20%;
         }
-
-        .empty-space {
-            width: 40%;
+        
+        .recommendations-column {
+            width: 20%;
             display: flex;
             flex-direction: column;
-            border: 1px solid var(--color-border);
+            border-right: 1px solid var(--color-border);
         }
-
-        .empty-space-top,
-        .empty-space-bottom {
-            height: 50%;
+        
+        .automations-section,
+        .dashboards-section {
+            height: 30%;
+            padding: 1rem;
             border-bottom: 1px solid var(--color-border);
+            overflow-y: auto;
+        }
+        
+        .logs-section {
+            height: 40%;
+            padding: 1rem;
+            overflow-y: auto;
+        }
+        
+        .automation-item,
+        .dashboard-item {
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            background-color: var(--color-bg-secondary);
+        }
+        
+        .automation-item .run-btn {
+            margin-top: 0.5rem;
+            padding: 0.25rem 0.5rem;
+            background-color: var(--color-accent);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        
+        .log-item {
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            border-left: 3px solid;
+            font-size: 0.8rem;
+        }
+        
+        .log-info {
+            border-left-color: #3498db;
+        }
+        
+        .log-warning {
+            border-left-color: #f39c12;
+        }
+        
+        .log-error {
+            border-left-color: #e74c3c;
         }
 
         .main-content {
-            width: 50%;
+            width: 40%;
         }
     </style>
 </head>
@@ -66,6 +113,33 @@
             </div>
         </aside>
 
+        <!-- Recommendations column -->
+        <aside class="recommendations-column">
+            <div class="automations-section">
+                <h3>Automation Recommendations</h3>
+                <div id="automations-list" class="automations-list">
+                    <!-- Automations will be loaded here -->
+                    <div class="loading-automations">Loading automations...</div>
+                </div>
+            </div>
+            
+            <div class="dashboards-section">
+                <h3>Dashboard Recommendations</h3>
+                <div id="dashboards-list" class="dashboards-list">
+                    <!-- Dashboards will be loaded here -->
+                    <div class="loading-dashboards">Loading dashboards...</div>
+                </div>
+            </div>
+            
+            <div class="logs-section">
+                <h3>System Logs</h3>
+                <div id="logs-list" class="logs-list">
+                    <!-- Logs will be loaded here -->
+                    <div class="loading-logs">Loading logs...</div>
+                </div>
+            </div>
+        </aside>
+        
         <!-- Middle column for chat assistant -->
         <aside class="sidebar">
             <div class="sidebar-header">

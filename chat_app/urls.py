@@ -23,4 +23,11 @@ urlpatterns = [
     # Incident endpoints
     path('api/incidents/', views.incidents, name='incidents'),
     path('api/incidents/<uuid:incident_id>/', views.incident_detail, name='incident_detail'),
+    
+    # Dashboard endpoints
+    path('api/dashboards/', views.dashboards, name='dashboards'),
+    path('api/dashboards/<uuid:dashboard_id>/', views.dashboard_detail, name='dashboard_detail'),
+    
+    # Log endpoints
+    path('api/logs/', views.logs, name='logs'),
 ]
