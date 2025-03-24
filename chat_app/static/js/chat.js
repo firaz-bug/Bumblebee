@@ -41,6 +41,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load incidents for the sidebar
     loadIncidents();
     
+    // Load recommendations column data
+    loadAutomations();
+    loadDashboards();
+    loadLogs();
+    
     // Setup auto-resize for textarea
     setupTextareaAutoResize();
 });
@@ -867,4 +872,176 @@ function loadIncidents() {
             console.error('Error loading incidents:', error);
             incidentsList.innerHTML = '<div class="loading-incidents">Failed to load incidents. Please try again.</div>';
         });
+}
+
+// Function to load automations for the recommendations column
+function loadAutomations() {
+    const automationsList = document.getElementById('automations-list');
+    if (!automationsList) return;
+
+    fetch('/api/automations/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(automations => {
+            renderAutomationsList(automations);
+        })
+        .catch(error => {
+            console.error('Error loading automations:', error);
+            automationsList.innerHTML = '<div class="loading-automations">Failed to load automations. Please try again.</div>';
+        });
+}
+
+// Function to render the automations list
+function renderAutomationsList(automations) {
+    const automationsList = document.getElementById('automations-list');
+    if (!automationsList) return;
+    
+    if (automations.length === 0) {
+        automationsList.innerHTML = '<div class="empty-state">No automations available</div>';
+        return;
+    }
+    
+    let html = '';
+    automations.forEach(automation => {
+        html += `
+            <div class="automation-item" data-id="${automation.id}">
+                <div class="automation-name">${automation.name}</div>
+                <div class="automation-description">${automation.description}</div>
+                <button class="run-btn" data-id="${automation.id}">Run</button>
+            </div>
+        `;
+    });
+    
+    automationsList.innerHTML = html;
+    
+    // Add event listeners to run buttons
+    document.querySelectorAll('.automation-item .run-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const automationId = this.dataset.id;
+            triggerAutomation(automationId);
+        });
+    });
+}
+
+// Function to trigger an automation
+function triggerAutomation(automationId) {
+    fetch(`/api/automations/${automationId}/trigger/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to trigger automation');
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert(`Automation triggered successfully: ${data.message || 'Completed'}`);
+    })
+    .catch(error => {
+        console.error('Error triggering automation:', error);
+        alert('Failed to trigger automation. Please try again.');
+    });
+}
+
+// Function to load dashboards for the recommendations column
+function loadDashboards() {
+    const dashboardsList = document.getElementById('dashboards-list');
+    if (!dashboardsList) return;
+
+    fetch('/api/dashboards/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(dashboards => {
+            renderDashboardsList(dashboards);
+        })
+        .catch(error => {
+            console.error('Error loading dashboards:', error);
+            dashboardsList.innerHTML = '<div class="loading-dashboards">Failed to load dashboards. Please try again.</div>';
+        });
+}
+
+// Function to render the dashboards list
+function renderDashboardsList(dashboards) {
+    const dashboardsList = document.getElementById('dashboards-list');
+    if (!dashboardsList) return;
+    
+    if (dashboards.length === 0) {
+        dashboardsList.innerHTML = '<div class="empty-state">No dashboards available</div>';
+        return;
+    }
+    
+    let html = '';
+    dashboards.forEach(dashboard => {
+        html += `
+            <div class="dashboard-item">
+                <div class="dashboard-name">${dashboard.name}</div>
+                <div class="dashboard-description">${dashboard.description}</div>
+                <a href="${dashboard.link}" target="_blank" class="dashboard-link">Open Dashboard <i data-feather="external-link"></i></a>
+            </div>
+        `;
+    });
+    
+    dashboardsList.innerHTML = html;
+    
+    // Initialize feather icons
+    feather.replace();
+}
+
+// Function to load logs for the recommendations column
+function loadLogs() {
+    const logsList = document.getElementById('logs-list');
+    if (!logsList) return;
+
+    fetch('/api/logs/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(logs => {
+            renderLogsList(logs);
+        })
+        .catch(error => {
+            console.error('Error loading logs:', error);
+            logsList.innerHTML = '<div class="loading-logs">Failed to load logs. Please try again.</div>';
+        });
+}
+
+// Function to render the logs list
+function renderLogsList(logs) {
+    const logsList = document.getElementById('logs-list');
+    if (!logsList) return;
+    
+    if (logs.length === 0) {
+        logsList.innerHTML = '<div class="empty-state">No logs available</div>';
+        return;
+    }
+    
+    let html = '';
+    logs.forEach(log => {
+        const logClass = `log-${log.level.toLowerCase()}`;
+        html += `
+            <div class="log-item ${logClass}">
+                <div class="log-timestamp">${new Date(log.timestamp).toLocaleString()}</div>
+                <div class="log-source">${log.source}</div>
+                <div class="log-message">${log.message}</div>
+            </div>
+        `;
+    });
+    
+    logsList.innerHTML = html;
 }
