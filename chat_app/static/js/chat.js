@@ -850,7 +850,39 @@ function highlightIncident(element) {
 }
 
 // Function to update incident status
-function updateIncidentStatus(incidentId, newStatus) {
+function showStatusChangeModal(incidentId, newStatus) {
+    const modal = document.createElement('div');
+    modal.className = 'status-change-modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <h3>Update Status</h3>
+            <p>Please provide comments for this status change:</p>
+            <textarea id="status-comments" rows="4" placeholder="Enter your comments..."></textarea>
+            <div class="modal-buttons">
+                <button class="cancel-btn">Cancel</button>
+                <button class="confirm-btn">Update Status</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Add event listeners
+    const cancelBtn = modal.querySelector('.cancel-btn');
+    const confirmBtn = modal.querySelector('.confirm-btn');
+    const textarea = modal.querySelector('#status-comments');
+
+    cancelBtn.addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+
+    confirmBtn.addEventListener('click', () => {
+        const comments = textarea.value;
+        updateIncidentStatus(incidentId, newStatus, comments);
+        document.body.removeChild(modal);
+    });
+}
+
+function updateIncidentStatus(incidentId, newStatus, comments) {
     // Format the status value for the API (convert to title case)
     let apiStatus = newStatus.replace(/-/g, ' ').replace(/\w\S*/g, 
         function(txt) {
@@ -866,7 +898,8 @@ function updateIncidentStatus(incidentId, newStatus) {
             'X-CSRFToken': getCSRFToken()
         },
         body: JSON.stringify({
-            status: apiStatus
+            status: apiStatus,
+            comments: comments
         })
     })
     .then(response => {
