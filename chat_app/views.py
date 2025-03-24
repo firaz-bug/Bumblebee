@@ -422,8 +422,29 @@ def incident_detail(request, incident_id):
         return Response(status=status.HTTP_404_NOT_FOUND)
     
     if request.method == 'GET':
+        # Get base incident data
         serializer = IncidentSerializer(incident)
-        return Response(serializer.data)
+        response_data = serializer.data
+        
+        # Find related automations based on incident description
+        automation_ids = vector_store.recommend_automations(incident.description)
+        if automation_ids:
+            recommended_automations = Automation.objects.filter(id__in=automation_ids)
+            automation_serializer = AutomationSerializer(recommended_automations, many=True)
+            response_data['recommended_automations'] = automation_serializer.data
+        else:
+            response_data['recommended_automations'] = []
+            
+        # Find related dashboards based on incident description
+        dashboard_ids = vector_store.recommend_dashboards(incident.description)
+        if dashboard_ids:
+            recommended_dashboards = Dashboard.objects.filter(id__in=dashboard_ids)
+            dashboard_serializer = DashboardSerializer(recommended_dashboards, many=True)
+            response_data['recommended_dashboards'] = dashboard_serializer.data
+        else:
+            response_data['recommended_dashboards'] = []
+            
+        return Response(response_data)
     
     elif request.method == 'PUT':
         serializer = IncidentSerializer(incident, data=request.data)

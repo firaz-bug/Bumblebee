@@ -433,6 +433,8 @@ class VectorStore:
             # Import here to avoid circular imports
             from django.apps import apps
             Document = apps.get_model('chat_app', 'Document')
+            Automation = apps.get_model('chat_app', 'Automation')
+            Dashboard = apps.get_model('chat_app', 'Dashboard')
             
             # Get all documents from database
             documents = Document.objects.all()
@@ -448,33 +450,260 @@ class VectorStore:
                         self.add_document(str(document.id), document.title, document.content)
                     else:
                         # Document info exists, but we need to reload chunks into memory
-                        doc_info = self.documents_info.get(str(document.id))
-                        if doc_info:
-                            # Reload document chunks using the stored info
-                            chunks = self._chunk_text(document.content)
-                            
-                            for i, chunk in enumerate(chunks):
-                                chunk_id = f"{document.id}_{i}"
-                                
-                                # Store chunk in memory
-                                self.documents_by_id[chunk_id] = {
-                                    "content": chunk,
-                                    "metadata": {
-                                        "document_id": str(document.id),
-                                        "title": document.title,
-                                        "chunk": i
-                                    }
-                                }
-                                self.document_texts.append(chunk)
-                            
-                            logger.info(f"Reloaded document '{document.title}' with {len(chunks)} chunks")
+                        logger.info(f"Document '{document.title}' already in vector store")
+            
+            # Load all automations from database
+            automations = Automation.objects.all()
+            auto_count = automations.count()
+            logger.info(f"Loading {auto_count} automations from database into vector store")
+            
+            # Add each automation to the vector store
+            for automation in automations:
+                # Only add if not already in automations_info
+                if str(automation.id) not in self.automations_info:
+                    logger.info(f"Adding automation '{automation.name}' to vector store")
+                    self.add_automation(str(automation.id), automation.name, automation.description)
+                else:
+                    # Automation info exists, but we need to reload it into memory
+                    logger.info(f"Automation '{automation.name}' already in vector store")
+                    # Add to automations_by_id for in-memory lookup
+                    self.automations_by_id[str(automation.id)] = {
+                        "content": automation.description,
+                        "metadata": {
+                            "automation_id": str(automation.id),
+                            "name": automation.name
+                        }
+                    }
+                    self.automation_texts.append(automation.description)
+            
+            # Load all dashboards from database
+            dashboards = Dashboard.objects.all()
+            dash_count = dashboards.count()
+            logger.info(f"Loading {dash_count} dashboards from database into vector store")
+            
+            # Add each dashboard to the vector store
+            for dashboard in dashboards:
+                # Only add if not already in dashboards_info
+                if str(dashboard.id) not in self.dashboards_info:
+                    logger.info(f"Adding dashboard '{dashboard.name}' to vector store")
+                    self.add_dashboard(str(dashboard.id), dashboard.name, dashboard.description)
+                else:
+                    # Dashboard info exists, but we need to reload it into memory
+                    logger.info(f"Dashboard '{dashboard.name}' already in vector store")
+                    # Add to dashboards_by_id for in-memory lookup
+                    self.dashboards_by_id[str(dashboard.id)] = {
+                        "content": dashboard.description,
+                        "metadata": {
+                            "dashboard_id": str(dashboard.id),
+                            "name": dashboard.name
+                        }
+                    }
+                    self.dashboard_texts.append(dashboard.description)
             
             # Log summary
-            logger.info(f"Loaded {len(self.documents_by_id)} document chunks into vector store")
+            logger.info(f"Loaded {len(self.documents_by_id)} document chunks, {len(self.automations_by_id)} automations, and {len(self.dashboards_by_id)} dashboards into vector store")
             
         except Exception as e:
             logger.error(f"Error loading documents from database: {str(e)}")
     
+    def add_automation(self, automation_id, name, description):
+        """
+        Add an automation to the vector store.
+        
+        Args:
+            automation_id: ID of the automation in the database
+            name: Automation name
+            description: Text description of the automation
+            
+        Returns:
+            str: Vector store ID for the automation
+        """
+        if not self.initialized:
+            self._initialize_vector_store()
+            if not self.initialized:
+                raise Exception("Vector store initialization failed")
+        
+        try:
+            # Store in memory
+            vector_id = str(automation_id)
+            
+            # Store automation in memory
+            self.automations_by_id[vector_id] = {
+                "content": description,
+                "metadata": {
+                    "automation_id": str(automation_id),
+                    "name": name
+                }
+            }
+            self.automation_texts.append(description)
+            
+            # Save automation info
+            self.automations_info[str(automation_id)] = {
+                "name": name,
+                "vector_id": vector_id
+            }
+            
+            with open(self.automations_info_path, 'w') as f:
+                json.dump(self.automations_info, f)
+                
+            return vector_id
+            
+        except Exception as e:
+            logger.error(f"Error adding automation to vector store: {str(e)}")
+            raise
+            
+    def add_dashboard(self, dashboard_id, name, description):
+        """
+        Add a dashboard to the vector store.
+        
+        Args:
+            dashboard_id: ID of the dashboard in the database
+            name: Dashboard name
+            description: Text description of the dashboard
+            
+        Returns:
+            str: Vector store ID for the dashboard
+        """
+        if not self.initialized:
+            self._initialize_vector_store()
+            if not self.initialized:
+                raise Exception("Vector store initialization failed")
+        
+        try:
+            # Store in memory
+            vector_id = str(dashboard_id)
+            
+            # Store dashboard in memory
+            self.dashboards_by_id[vector_id] = {
+                "content": description,
+                "metadata": {
+                    "dashboard_id": str(dashboard_id),
+                    "name": name
+                }
+            }
+            self.dashboard_texts.append(description)
+            
+            # Save dashboard info
+            self.dashboards_info[str(dashboard_id)] = {
+                "name": name,
+                "vector_id": vector_id
+            }
+            
+            with open(self.dashboards_info_path, 'w') as f:
+                json.dump(self.dashboards_info, f)
+                
+            return vector_id
+            
+        except Exception as e:
+            logger.error(f"Error adding dashboard to vector store: {str(e)}")
+            raise
+            
+    def recommend_automations(self, incident_description, top_k=2):
+        """
+        Find automations related to an incident description.
+        
+        Args:
+            incident_description: Description of the incident
+            top_k: Number of results to return
+            
+        Returns:
+            list: List of relevant automation IDs
+        """
+        if not self.initialized or len(self.automations_by_id) == 0:
+            self._initialize_vector_store()
+            if not self.initialized:
+                return []
+                
+        try:
+            # For our simplified implementation, do a basic keyword search
+            logger.info(f"Finding automations related to incident: '{incident_description[:100]}...'")
+            
+            query_terms = incident_description.lower().split()
+            
+            # Score each automation based on term frequency
+            results = []
+            for vector_id, auto in self.automations_by_id.items():
+                content = auto["content"].lower()
+                metadata = auto["metadata"]
+                
+                # Count how many query terms are in the content
+                score = 0
+                
+                # Give higher weights to name matches
+                for term in query_terms:
+                    if term in metadata["name"].lower():
+                        score += 2
+                    if term in content:
+                        score += 1
+                
+                # Store result if it has any matches
+                if score > 0:
+                    results.append((vector_id, score))
+            
+            # Sort by score (descending) and take top_k
+            results.sort(key=lambda x: x[1], reverse=True)
+            results = results[:top_k]
+            
+            # Return automation IDs
+            return [r[0] for r in results]
+            
+        except Exception as e:
+            logger.error(f"Error recommending automations: {str(e)}")
+            return []
+            
+    def recommend_dashboards(self, incident_description, top_k=2):
+        """
+        Find dashboards related to an incident description.
+        
+        Args:
+            incident_description: Description of the incident
+            top_k: Number of results to return
+            
+        Returns:
+            list: List of relevant dashboard IDs
+        """
+        if not self.initialized or len(self.dashboards_by_id) == 0:
+            self._initialize_vector_store()
+            if not self.initialized:
+                return []
+                
+        try:
+            # For our simplified implementation, do a basic keyword search
+            logger.info(f"Finding dashboards related to incident: '{incident_description[:100]}...'")
+            
+            query_terms = incident_description.lower().split()
+            
+            # Score each dashboard based on term frequency
+            results = []
+            for vector_id, dash in self.dashboards_by_id.items():
+                content = dash["content"].lower()
+                metadata = dash["metadata"]
+                
+                # Count how many query terms are in the content
+                score = 0
+                
+                # Give higher weights to name matches
+                for term in query_terms:
+                    if term in metadata["name"].lower():
+                        score += 2
+                    if term in content:
+                        score += 1
+                
+                # Store result if it has any matches
+                if score > 0:
+                    results.append((vector_id, score))
+            
+            # Sort by score (descending) and take top_k
+            results.sort(key=lambda x: x[1], reverse=True)
+            results = results[:top_k]
+            
+            # Return dashboard IDs
+            return [r[0] for r in results]
+            
+        except Exception as e:
+            logger.error(f"Error recommending dashboards: {str(e)}")
+            return []
+            
     def _chunk_text(self, text, chunk_size=1000, overlap=100):
         """
         Split text into chunks for better vector storage and retrieval.
