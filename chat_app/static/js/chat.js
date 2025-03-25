@@ -168,6 +168,50 @@ async function createNewChat() {
     }
 }
 
+// Function to rename the current chat
+async function renameCurrentChat() {
+    if (!currentConversationId) {
+        alert('Please select a conversation first');
+        return;
+    }
+    
+    const newTitle = prompt('Enter a new title for this conversation:', '');
+    if (!newTitle || newTitle.trim() === '') {
+        return; // User canceled or entered empty title
+    }
+    
+    try {
+        const response = await fetch(`/api/conversations/${currentConversationId}/`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({
+                title: newTitle.trim()
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to rename conversation');
+        }
+        
+        const updatedConversation = await response.json();
+        
+        // Update the conversation title in the UI
+        const titleElement = document.getElementById('current-conversation-title');
+        if (titleElement) {
+            titleElement.textContent = updatedConversation.title;
+        }
+        
+        // Reload conversations to update the list
+        await loadConversations();
+    } catch (error) {
+        console.error('Error renaming conversation:', error);
+        alert('Failed to rename conversation. Please try again.');
+    }
+}
+
 // Function to delete the current chat
 async function deleteCurrentChat() {
     if (!currentConversationId) return;
@@ -1105,5 +1149,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const deleteChatBtn = document.getElementById('delete-chat-btn');
     if (deleteChatBtn) {
         deleteChatBtn.addEventListener('click', deleteCurrentChat);
+    }
+    
+    // Set up rename chat button handler
+    const renameChatBtn = document.getElementById('rename-chat-btn');
+    if (renameChatBtn) {
+        renameChatBtn.addEventListener('click', renameCurrentChat);
     }
 });

@@ -422,14 +422,8 @@
                 </div>
                 <div class="chat-body">
                     <div class="conversations-sidebar">
-                        <div class="conversations-list">
-                            <!-- Conversation list will be populated here -->
-                            {% for conversation in conversations %}
-                            <div class="conversation-item {% if conversation.id == current_conversation.id %}active{% endif %}" data-id="{{ conversation.id }}">
-                                <i data-feather="message-square"></i>
-                                <span class="conversation-title">{{ conversation.title }}</span>
-                            </div>
-                            {% endfor %}
+                        <div id="conversations-list" class="conversations-list">
+                            <!-- Conversation list will be populated here via JavaScript -->
                         </div>
                         <div class="documents-list-container">
                             <h3>Documents</h3>
