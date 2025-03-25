@@ -202,10 +202,11 @@ function renderDocumentsList(documents) {
     documents.forEach(document => {
         html += `
             <div class="document-item">
+                <div class="document-icon"><i data-feather="file-text"></i></div>
                 <div class="document-title">${document.title}</div>
-                <div class="document-type">${document.file_type}</div>
-                <div class="document-date">${new Date(document.uploaded_at).toLocaleDateString()}</div>
-                <button class="delete-btn" onclick="deleteDocument('${document.id}')">Delete</button>
+                <button class="document-delete" onclick="deleteDocument('${document.id}')" title="Delete document">
+                    <i data-feather="trash-2"></i>
+                </button>
             </div>
         `;
     });
