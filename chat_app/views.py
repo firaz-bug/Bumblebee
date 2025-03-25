@@ -522,3 +522,40 @@ def logs(request):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['DELETE'])
+def clear_conversations(request):
+    """API endpoint for deleting all conversations."""
+    # Create a default conversation to remain after clearing
+    default_conversation = Conversation.objects.create(title="New Conversation")
+    Message.objects.create(
+        conversation=default_conversation,
+        role='system',
+        content='Welcome to Wells Fargo AI Integrated Platform Support Assistant.'
+    )
+    
+    # Delete all other conversations
+    Conversation.objects.exclude(id=default_conversation.id).delete()
+    
+    # Return success message
+    return Response({"message": "All conversations cleared. Default conversation created."}, status=status.HTTP_200_OK)
+
+@api_view(['DELETE'])
+def clear_documents(request):
+    """API endpoint for deleting all documents from database and vector store."""
+    # Get all documents
+    documents = Document.objects.all()
+    
+    # Delete each document from vector store
+    for document in documents:
+        if document.vector_id:
+            try:
+                vector_store.delete_document(document.id)
+            except Exception as e:
+                print(f"Error deleting document {document.id} from vector store: {str(e)}")
+    
+    # Delete all documents from database
+    Document.objects.all().delete()
+    
+    # Return success message
+    return Response({"message": "All documents cleared from database and vector store."}, status=status.HTTP_200_OK)

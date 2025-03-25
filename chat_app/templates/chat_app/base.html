@@ -323,6 +323,35 @@
         
         .sidebar-header {
             background-color: var(--wf-light-gray);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid var(--color-border);
+        }
+        
+        .clear-all-btn {
+            background-color: transparent;
+            color: var(--wf-red);
+            border: 1px solid var(--wf-red);
+            border-radius: 4px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s;
+        }
+        
+        .clear-all-btn i {
+            margin-right: 3px;
+            width: 14px;
+            height: 14px;
+        }
+        
+        .clear-all-btn:hover {
+            background-color: var(--wf-red);
+            color: white;
         }
     </style>
 <script src="https://unpkg.com/feather-icons"></script>
@@ -422,11 +451,22 @@
                 </div>
                 <div class="chat-body">
                     <div class="conversations-sidebar">
+                        <div class="sidebar-header">
+                            <h3>Conversations</h3>
+                            <button id="clear-all-conversations-btn" class="clear-all-btn" title="Clear all conversations">
+                                <i data-feather="trash-2"></i> Clear All
+                            </button>
+                        </div>
                         <div id="conversations-list" class="conversations-list">
                             <!-- Conversation list will be populated here via JavaScript -->
                         </div>
                         <div class="documents-list-container">
-                            <h3>Documents</h3>
+                            <div class="sidebar-header">
+                                <h3>Documents</h3>
+                                <button id="clear-all-documents-btn" class="clear-all-btn" title="Clear all documents">
+                                    <i data-feather="trash-2"></i> Clear All
+                                </button>
+                            </div>
                             <div id="documents-list" class="documents-list">
                                 <!-- Documents will be loaded here -->
                                 <div class="loading-documents">Loading documents...</div>
