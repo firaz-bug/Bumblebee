@@ -1,91 +1,83 @@
 // Chat.js - Main JavaScript file for the Wells Fargo AI Platform Support Assistant
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Initial setup - load data and set up event listeners
-    loadConversations();
-    loadDocuments();
-    loadIncidents();
-    loadAutomations();
-    loadDashboards();
-    loadLogs();
-
-    // Setup event listeners
-    setupChatEventListeners();
-});
-
-function setupChatEventListeners() {
-    // Chat form submission
-    const chatForm = document.getElementById('chat-form');
-    if (chatForm) {
-        chatForm.addEventListener('submit', handleChatSubmit);
-    }
-
-    // New chat button
-    const newChatBtn = document.getElementById('new-chat-btn');
-    if (newChatBtn) {
-        newChatBtn.addEventListener('click', createNewChat);
-    }
-
-    // Delete chat button
-    const deleteChatBtn = document.getElementById('delete-chat-btn');
-    if (deleteChatBtn) {
-        deleteChatBtn.addEventListener('click', deleteCurrentChat);
-    }
+// Helper function to get CSRF token
+function getCSRFToken() {
+    const cookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='))
+        ?.split('=')[1];
+    return cookieValue || '';
 }
 
+// Function to load conversations
 async function loadConversations() {
     try {
         const response = await fetch('/api/conversations/');
-        const conversations = await response.json();
-        updateConversationsList(conversations);
+        if (response.ok) {
+            const conversations = await response.json();
+            const conversationsList = document.querySelector('.conversations-list');
+            if (!conversationsList) return;
+
+            conversationsList.innerHTML = conversations.map(conv => `
+                <div class="conversation-item" data-id="${conv.id}">
+                    <i data-feather="message-square"></i>
+                    <span class="conversation-title">${conv.title}</span>
+                </div>
+            `).join('');
+
+            // Re-initialize Feather icons
+            if (window.feather) {
+                feather.replace();
+            }
+
+            // Add click handlers to conversation items
+            document.querySelectorAll('.conversation-item').forEach(item => {
+                item.addEventListener('click', () => switchConversation(item.dataset.id));
+            });
+        }
     } catch (error) {
         console.error('Error loading conversations:', error);
     }
 }
 
-function updateConversationsList(conversations) {
-    const conversationsList = document.querySelector('.conversations-list');
-    if (!conversationsList) return;
-
-    conversationsList.innerHTML = conversations.map(conv => `
-        <div class="conversation-item" data-id="${conv.id}" onclick="switchConversation('${conv.id}')">
-            <i data-feather="message-square"></i>
-            <span class="conversation-title">${conv.title}</span>
-        </div>
-    `).join('');
-
-    // Re-initialize Feather icons
-    if (window.feather) {
-        feather.replace();
-    }
-}
-
+// Function to switch conversation
 async function switchConversation(conversationId) {
     try {
-        const response = await fetch(`/api/conversations/${conversationId}/`);
-        const conversation = await response.json();
+        const response = await fetch(`/api/conversations/${conversationId}/messages/`);
+        if (response.ok) {
+            const messages = await response.json();
 
-        // Update UI
-        document.querySelectorAll('.conversation-item').forEach(item => {
-            item.classList.remove('active');
-            if (item.dataset.id === conversationId) {
-                item.classList.add('active');
-            }
-        });
+            // Update active conversation
+            document.querySelectorAll('.conversation-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.id === conversationId) {
+                    item.classList.add('active');
+                }
+            });
 
-        // Update chat title
-        const titleElement = document.getElementById('current-chat-title');
-        if (titleElement) {
-            titleElement.textContent = conversation.title;
+            // Display messages
+            displayMessages(messages);
         }
-
-        // Load messages
-        loadMessages(conversationId);
     } catch (error) {
         console.error('Error switching conversation:', error);
     }
 }
 
+// Function to display messages
+function displayMessages(messages) {
+    const chatMessages = document.getElementById('chat-messages');
+    if (!chatMessages) return;
+
+    chatMessages.innerHTML = messages.map(msg => `
+        <div class="message ${msg.role}-message">
+            <div class="message-content">${msg.content}</div>
+        </div>
+    `).join('');
+
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Function to create new chat
 async function createNewChat() {
     try {
         const response = await fetch('/api/conversations/', {
@@ -109,6 +101,7 @@ async function createNewChat() {
     }
 }
 
+// Function to delete current chat
 async function deleteCurrentChat() {
     const activeChat = document.querySelector('.conversation-item.active');
     if (!activeChat) return;
@@ -137,29 +130,7 @@ async function deleteCurrentChat() {
     }
 }
 
-async function loadMessages(conversationId) {
-    try {
-        const response = await fetch(`/api/conversations/${conversationId}/messages/`);
-        const messages = await response.json();
-        displayMessages(messages);
-    } catch (error) {
-        console.error('Error loading messages:', error);
-    }
-}
-
-function displayMessages(messages) {
-    const chatMessages = document.getElementById('chat-messages');
-    if (!chatMessages) return;
-
-    chatMessages.innerHTML = messages.map(msg => `
-        <div class="message ${msg.role}-message">
-            <div class="message-content">${msg.content}</div>
-        </div>
-    `).join('');
-
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
+// Function to handle chat form submission
 async function handleChatSubmit(event) {
     event.preventDefault();
     const input = document.getElementById('chat-input');
@@ -194,354 +165,32 @@ async function handleChatSubmit(event) {
     }
 }
 
-async function deleteDocument(documentId) {
-    try {
-        const response = await fetch(`/api/documents/${documentId}/delete/`, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRFToken': getCSRFToken()
-            }
-        });
+// Initialize event listeners when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Load initial conversations
+    loadConversations();
 
-        if (response.ok) {
-            loadDocuments();
-        }
-    } catch (error) {
-        console.error('Error deleting document:', error);
+    // Set up form submission handler
+    const chatForm = document.getElementById('chat-form');
+    if (chatForm) {
+        chatForm.addEventListener('submit', handleChatSubmit);
     }
-}
 
-function getCSRFToken() {
-    const cookieValue = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('csrftoken='))
-        ?.split('=')[1];
-    return cookieValue || '';
-}
-
-
-// Function to load conversations
-function loadConversations() {
-    const conversationsList = document.getElementById('conversations-list');
-    if (!conversationsList) return;
-    
-    fetch('/api/conversations/')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(conversations => {
-            renderConversationsList(conversations);
-            
-            // If there are conversations and none is selected, select the first one
-            if (conversations.length > 0 && !document.querySelector('.conversation-item.active')) {
-                changeConversation(conversations[0].id);
-            }
-        })
-        .catch(error => {
-            console.error('Error loading conversations:', error);
-            conversationsList.innerHTML = '<div class="loading-error">Failed to load conversations. Please try again.</div>';
-        });
-}
-
-// Function to render the conversations list
-function renderConversationsList(conversations) {
-    const conversationsList = document.getElementById('conversations-list');
-    if (!conversationsList) return;
-    
-    if (conversations.length === 0) {
-        conversationsList.innerHTML = '<div class="empty-conversations">No conversations yet. Start chatting!</div>';
-        return;
+    // Set up new chat button handler
+    const newChatBtn = document.getElementById('new-chat-btn');
+    if (newChatBtn) {
+        newChatBtn.addEventListener('click', createNewChat);
     }
-    
-    let html = '';
-    conversations.forEach(conversation => {
-        const activeClass = (window.currentConversationId && window.currentConversationId === conversation.id) ? 'active' : '';
-        
-        html += `
-            <div class="conversation-item ${activeClass}" data-id="${conversation.id}">
-                <div class="conversation-title" onclick="changeConversation('${conversation.id}')">${conversation.title}</div>
-                <div class="conversation-date">${new Date(conversation.updated_at).toLocaleDateString()}</div>
-            </div>
-        `;
-    });
-    
-    conversationsList.innerHTML = html;
-}
 
-// Function to load messages for a conversation
-function loadMessages(conversationId) {
-    const messagesContainer = document.getElementById('messages-container');
-    if (!messagesContainer) return;
-    
-    fetch(`/api/conversations/${conversationId}/messages/`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(messages => {
-            messagesContainer.innerHTML = '';
-            
-            messages.forEach(message => {
-                addMessageToUI(message.role, message.content);
-            });
-            
-            scrollToBottom();
-        })
-        .catch(error => {
-            console.error('Error loading messages:', error);
-            messagesContainer.innerHTML = '<div class="loading-error">Failed to load messages. Please try again.</div>';
-        });
-}
-
-// Function to change the active conversation
-function changeConversation(conversationId) {
-    window.currentConversationId = conversationId;
-    
-    // Update active conversation in UI
-    document.querySelectorAll('.conversation-item').forEach(item => {
-        if (item.dataset.id === conversationId) {
-            item.classList.add('active');
-        } else {
-            item.classList.remove('active');
-        }
-    });
-    
-    // Update conversation title in the chat header
-    fetch(`/api/conversations/${conversationId}/`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(conversation => {
-            const chatTitle = document.getElementById('conversation-title');
-            if (chatTitle) {
-                chatTitle.textContent = conversation.title;
-            }
-        })
-        .catch(error => {
-            console.error('Error loading conversation details:', error);
-        });
-    
-    // Load messages for the selected conversation
-    loadMessages(conversationId);
-}
-
-// Function to handle document upload
-function handleDocumentUpload(e) {
-    e.preventDefault();
-    
-    const fileInput = document.getElementById('file-input');
-    const file = fileInput.files[0];
-    
-    if (!file) {
-        updateUploadStatus('Please select a file.', 'error');
-        return;
+    // Set up delete chat button handler
+    const deleteChatBtn = document.getElementById('delete-chat-btn');
+    if (deleteChatBtn) {
+        deleteChatBtn.addEventListener('click', deleteCurrentChat);
     }
-    
-    // Create form data for the file upload
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    // Update upload status
-    updateUploadStatus('Uploading...', 'info');
-    
-    // Send the file to the server
-    fetch('/api/documents/upload/', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCSRFToken()
-        },
-        body: formData
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
-    })
-    .then(data => {
-        // Clear the file input
-        fileInput.value = '';
-        
-        // Update upload status
-        updateUploadStatus(`Uploaded ${data.title} successfully!`, 'success');
-        
-        // Reload documents list
-        loadDocuments();
-    })
-    .catch(error => {
-        console.error('Error uploading document:', error);
-        updateUploadStatus('Failed to upload document. Please try again.', 'error');
-    });
-}
+});
 
-// Function to rename a conversation
-function renameConversation() {
-    if (!window.currentConversationId) {
-        alert('Please select a conversation to rename.');
-        return;
-    }
-    
-    const newTitle = prompt('Enter a new title for this conversation:');
-    if (!newTitle) return;
-    
-    fetch(`/api/conversations/${window.currentConversationId}/`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCSRFToken()
-        },
-        body: JSON.stringify({
-            title: newTitle
-        })
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
-    })
-    .then(conversation => {
-        // Update the title in the UI
-        const chatTitle = document.getElementById('conversation-title');
-        if (chatTitle) {
-            chatTitle.textContent = conversation.title;
-        }
-        
-        // Reload the conversations list
-        loadConversations();
-    })
-    .catch(error => {
-        console.error('Error renaming conversation:', error);
-        alert('Failed to rename conversation. Please try again.');
-    });
-}
 
-// Function to delete a conversation
-function deleteConversation() {
-    if (!window.currentConversationId) {
-        alert('Please select a conversation to delete.');
-        return;
-    }
-    
-    if (!confirm('Are you sure you want to delete this conversation?')) {
-        return;
-    }
-    
-    fetch(`/api/conversations/${window.currentConversationId}/`, {
-        method: 'DELETE',
-        headers: {
-            'X-CSRFToken': getCSRFToken()
-        }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        
-        // Clear the current conversation
-        window.currentConversationId = null;
-        
-        // Clear the messages
-        const messagesContainer = document.getElementById('messages-container');
-        if (messagesContainer) {
-            messagesContainer.innerHTML = '';
-        }
-        
-        // Clear the title
-        const chatTitle = document.getElementById('conversation-title');
-        if (chatTitle) {
-            chatTitle.textContent = '';
-        }
-        
-        // Reload the conversations list
-        loadConversations();
-    })
-    .catch(error => {
-        console.error('Error deleting conversation:', error);
-        alert('Failed to delete conversation. Please try again.');
-    });
-}
-
-// Function to add a message to the UI
-function addMessageToUI(role, content) {
-    const messagesContainer = document.getElementById('messages-container');
-    if (!messagesContainer) return;
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${role}`;
-    messageDiv.innerHTML = `<div class="message-content">${content}</div>`;
-    
-    messagesContainer.appendChild(messageDiv);
-    scrollToBottom();
-}
-
-// Function to scroll the chat to the bottom
-function scrollToBottom() {
-    const messagesContainer = document.getElementById('messages-container');
-    if (messagesContainer) {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-}
-
-// Function to update upload status
-function updateUploadStatus(message, type) {
-    const uploadStatus = document.getElementById('upload-status');
-    if (!uploadStatus) return;
-    
-    uploadStatus.textContent = message;
-    uploadStatus.className = `upload-status ${type}`;
-    
-    // Clear status after a few seconds
-    setTimeout(() => {
-        uploadStatus.textContent = '';
-        uploadStatus.className = 'upload-status';
-    }, 5000);
-}
-
-// Function to setup textarea auto-resize
-function setupTextareaAutoResize() {
-    const textarea = document.getElementById('message-input');
-    if (!textarea) return;
-    
-    // Set initial height
-    textarea.style.height = 'auto';
-    textarea.style.height = (textarea.scrollHeight) + 'px';
-    
-    // Add event listener for input
-    textarea.addEventListener('input', function() {
-        this.style.height = 'auto';
-        this.style.height = (this.scrollHeight) + 'px';
-    });
-}
-
-// Function to reset textarea height
-function resetTextareaHeight() {
-    const textarea = document.getElementById('message-input');
-    if (textarea) {
-        textarea.style.height = 'auto';
-    }
-}
-
-// Function to get CSRF token
-function getCSRFToken() {
-    const cookieValue = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('csrftoken='))
-        ?.split('=')[1];
-    
-    return cookieValue || '';
-}
-
-// Function to load documents
-function loadDocuments() {
+async function loadDocuments() {
     const documentsList = document.getElementById('documents-list');
     if (!documentsList) return;
     
