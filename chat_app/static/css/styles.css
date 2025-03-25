@@ -7,6 +7,13 @@
     --color-hover: #ebecf0;
     --color-accent: #deebff;
     --color-assistant-message-bg: #f4f5f7;
+    --color-secondary: #6c757d;
+    --color-error: #e74c3c;
+    --color-success: #28a745;
+    --color-recommended-bg: #fff8e1;
+    --color-recommended-border: #ffd54f;
+    --color-wells-fargo-red: #D71E28;
+    --color-sidebar-bg: #f8f9fa;
 
     --spacing-xs: 4px;
     --spacing-sm: 8px;
@@ -1160,4 +1167,152 @@ body {
 .incident-brief-status.resolved {
     background-color: #f0fdf4;
     color: #16a34a;
+}
+/* Automation and Dashboard Recommendations */
+.automations-list,
+.dashboards-list {
+    margin-top: 10px;
+    max-height: calc(100% - 30px);
+    overflow-y: auto;
+}
+
+.automation-item,
+.dashboard-item {
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background-color: #f9f9f9;
+    position: relative;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.automation-item h4,
+.dashboard-item h4 {
+    margin: 0 0 5px 0;
+    font-size: 15px;
+}
+
+.automation-item p,
+.dashboard-item p {
+    margin: 0;
+    font-size: 13px;
+    color: #666;
+}
+
+.automation-item .run-btn {
+    margin-top: 8px;
+    padding: 3px 10px;
+    background-color: var(--color-wells-fargo-red);
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.automation-item .run-btn:hover {
+    background-color: #b91c24;
+}
+
+.dashboard-item .view-btn {
+    margin-top: 8px;
+    padding: 3px 10px;
+    background-color: #4285f4;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.dashboard-item .view-btn:hover {
+    background-color: #3367d6;
+}
+
+.document-delete {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-error);
+    cursor: pointer;
+    visibility: hidden;
+    background: none;
+    border: none;
+    padding: 5px;
+    border-radius: 3px;
+}
+
+.document-item:hover .document-delete {
+    visibility: visible;
+}
+
+/* Fix body height to see all content */
+html, body {
+    height: 100%;
+    overflow: auto;
+}
+
+.app-container {
+    height: calc(100vh - 60px);
+    min-height: 600px;
+    overflow: auto;
+}
+
+/* Fix for comment modal */
+#status-update-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+#status-update-modal .modal-content {
+    background-color: white;
+    margin: 15% auto;
+    padding: 20px;
+    border-radius: 5px;
+    width: 80%;
+    max-width: 400px;
+    position: relative;
+}
+
+#status-update-modal .modal-close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #aaa;
+}
+
+#status-update-modal .modal-close:hover {
+    color: black;
+}
+
+#status-comments {
+    width: 100%;
+    min-height: 100px;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+#submit-status-update-btn {
+    padding: 8px 15px;
+    background-color: var(--color-wells-fargo-red);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#submit-status-update-btn:hover {
+    background-color: #b91c24;
 }
