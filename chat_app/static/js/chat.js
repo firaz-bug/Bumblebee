@@ -13,6 +13,33 @@ function getCSRFToken() {
     return cookieValue || '';
 }
 
+// Function to show temporary notification
+function showNotification(message, type = 'info') {
+    // Create notification element if it doesn't exist
+    let notification = document.getElementById('notification');
+    if (!notification) {
+        notification = document.createElement('div');
+        notification.id = 'notification';
+        document.body.appendChild(notification);
+    }
+    
+    // Set notification content and style
+    notification.textContent = message;
+    notification.className = `notification ${type}`;
+    
+    // Show notification
+    notification.style.display = 'block';
+    notification.style.opacity = '1';
+    
+    // Hide notification after 3 seconds
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, 300);
+    }, 3000);
+}
+
 // Function to load conversations
 async function loadConversations() {
     try {
@@ -246,7 +273,10 @@ async function renameCurrentChat() {
 
 // Function to delete the current chat
 async function deleteCurrentChat() {
-    if (!currentConversationId) return;
+    if (!currentConversationId) {
+        showNotification('Please select a conversation first', 'warning');
+        return;
+    }
     
     if (!confirm('Are you sure you want to delete this conversation?')) {
         return;
@@ -261,8 +291,11 @@ async function deleteCurrentChat() {
         });
         
         if (!response.ok) {
-            throw new Error('Failed to delete conversation');
+            throw new Error(`Failed to delete conversation: ${response.status} ${response.statusText}`);
         }
+        
+        // Show success notification
+        showNotification('Conversation deleted successfully', 'success');
         
         currentConversationId = null;
         
@@ -270,7 +303,7 @@ async function deleteCurrentChat() {
         await loadConversations();
     } catch (error) {
         console.error('Error deleting conversation:', error);
-        alert('Failed to delete conversation. Please try again.');
+        showNotification('Failed to delete conversation. Please try again.', 'error');
     }
 }
 
@@ -474,14 +507,17 @@ async function deleteDocument(documentId) {
         });
         
         if (!response.ok) {
-            throw new Error('Failed to delete document');
+            throw new Error(`Failed to delete document: ${response.status} ${response.statusText}`);
         }
+        
+        // Show success notification
+        showNotification('Document deleted successfully', 'success');
         
         // Reload documents
         loadDocuments();
     } catch (error) {
         console.error('Error deleting document:', error);
-        alert('Failed to delete document. Please try again.');
+        showNotification('Failed to delete document. Please try again.', 'error');
     }
 }
 
