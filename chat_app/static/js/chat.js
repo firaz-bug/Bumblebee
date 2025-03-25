@@ -93,12 +93,14 @@ async function switchConversation(conversationId) {
         }
         
         // Display messages
-        displayMessages(conversation.messages);
-        
-        // Scroll to bottom of chat
-        const chatMessages = document.getElementById('chat-messages');
-        if (chatMessages) {
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+        const messagesContainer = document.getElementById('chat-messages');
+        if (messagesContainer) {
+            displayMessages(conversation.messages);
+            
+            // Scroll to bottom of chat
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        } else {
+            console.warn('Chat messages container not found');
         }
     } catch (error) {
         console.error('Error switching conversation:', error);
@@ -114,18 +116,38 @@ function displayMessages(messages) {
     const chatMessages = document.getElementById('chat-messages');
     if (!chatMessages) return;
     
-    if (messages.length === 0) {
+    if (!messages || messages.length === 0) {
         chatMessages.innerHTML = '<div class="empty-state">No messages yet. Start the conversation!</div>';
         return;
     }
     
     let html = '';
     messages.forEach(msg => {
-        const messageClass = msg.role === 'user' ? 'user-message' : 'assistant-message';
+        // Define message class based on role
+        let messageClass = '';
+        if (msg.role === 'user') {
+            messageClass = 'user';
+        } else if (msg.role === 'assistant') {
+            messageClass = 'assistant';
+        } else if (msg.role === 'system') {
+            messageClass = 'system';
+        }
+        
+        // Format the message content to handle markdown-like formatting
+        let formattedContent = msg.content;
+        
+        // Replace markdown code blocks with HTML
+        formattedContent = formattedContent.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
+        
+        // Replace inline code with HTML
+        formattedContent = formattedContent.replace(/`([^`]+)`/g, '<code>$1</code>');
+        
+        // Handle line breaks
+        formattedContent = formattedContent.replace(/\n/g, '<br>');
+        
         html += `
             <div class="message ${messageClass}">
-                <div class="message-content">${msg.content}</div>
-                <div class="message-time">${new Date(msg.created_at).toLocaleTimeString()}</div>
+                <div class="message-content">${formattedContent}</div>
             </div>
         `;
     });
@@ -256,22 +278,38 @@ async function handleChatSubmit(event) {
     
     // Display user message immediately
     const chatMessages = document.getElementById('chat-messages');
-    if (chatMessages) {
-        const newMessage = document.createElement('div');
-        newMessage.className = 'message user-message';
-        newMessage.innerHTML = `
-            <div class="message-content">${userMessage}</div>
-            <div class="message-time">${new Date().toLocaleTimeString()}</div>
-        `;
-        chatMessages.appendChild(newMessage);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+    if (!chatMessages) {
+        console.error('Chat messages container not found');
+        return;
     }
     
-    // Add loading indicator
-    const loadingMessage = document.createElement('div');
-    loadingMessage.className = 'message assistant-message loading';
-    loadingMessage.innerHTML = '<div class="message-content">Thinking...</div>';
-    chatMessages.appendChild(loadingMessage);
+    // Add user message
+    const userMessageHtml = `
+        <div class="message user">
+            <div class="message-content">${userMessage}</div>
+        </div>
+    `;
+    
+    // If it's the first message, remove the empty state message
+    if (chatMessages.querySelector('.empty-state')) {
+        chatMessages.innerHTML = '';
+    }
+    
+    chatMessages.insertAdjacentHTML('beforeend', userMessageHtml);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    // Add loading indicator (typing animation)
+    const loadingHtml = `
+        <div class="message assistant loading">
+            <div class="message-content">
+                <div class="typing-indicator">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+        </div>
+    `;
+    chatMessages.insertAdjacentHTML('beforeend', loadingHtml);
+    const loadingElement = chatMessages.querySelector('.loading');
     chatMessages.scrollTop = chatMessages.scrollHeight;
     
     try {
@@ -300,7 +338,9 @@ async function handleChatSubmit(event) {
         const updatedConversation = await conversationResponse.json();
         
         // Remove loading indicator
-        chatMessages.removeChild(loadingMessage);
+        if (loadingElement) {
+            loadingElement.remove();
+        }
         
         // Display all messages
         displayMessages(updatedConversation.messages);
@@ -310,15 +350,17 @@ async function handleChatSubmit(event) {
         console.error('Error sending message:', error);
         
         // Remove loading indicator
-        if (loadingMessage.parentNode) {
-            chatMessages.removeChild(loadingMessage);
+        if (loadingElement) {
+            loadingElement.remove();
         }
         
         // Display error message
-        const errorMessage = document.createElement('div');
-        errorMessage.className = 'message system-message error';
-        errorMessage.innerHTML = `<div class="message-content">Error: Failed to send message. Please try again.</div>`;
-        chatMessages.appendChild(errorMessage);
+        const errorHtml = `
+            <div class="message system">
+                <div class="message-content">Error: Failed to send message. Please try again.</div>
+            </div>
+        `;
+        chatMessages.insertAdjacentHTML('beforeend', errorHtml);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 }
@@ -720,7 +762,10 @@ function updateIncidentsSummary(incidents) {
 // Function to load incidents
 function loadIncidents() {
     const incidentsList = document.getElementById('incidents-list');
-    if (!incidentsList) return;
+    if (!incidentsList) {
+        console.warn('Incidents list element not found in the DOM');
+        return;
+    }
     
     // Show loading indicator
     incidentsList.innerHTML = '<div class="loading-incidents">Loading incidents...</div>';
@@ -735,7 +780,12 @@ function loadIncidents() {
         .then(incidents => {
             if (Array.isArray(incidents)) {
                 renderIncidentsList(incidents);
-                updateIncidentsSummary(incidents);
+                
+                // Only update summary if the container exists
+                const summaryContainer = document.getElementById('incident-summary');
+                if (summaryContainer) {
+                    updateIncidentsSummary(incidents);
+                }
             } else {
                 throw new Error('Invalid incidents data format');
             }
@@ -744,8 +794,11 @@ function loadIncidents() {
             console.error('Error loading incidents:', error);
             incidentsList.innerHTML = '<div class="loading-incidents error">Failed to load incidents. Please refresh the page or try again later.</div>';
             
-            // Also update the summary with empty data
-            updateIncidentsSummary([]);
+            // Only update summary if the container exists
+            const summaryContainer = document.getElementById('incident-summary');
+            if (summaryContainer) {
+                updateIncidentsSummary([]);
+            }
         });
 }
 
