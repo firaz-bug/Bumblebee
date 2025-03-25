@@ -1240,6 +1240,79 @@ function setupModals() {
     }
 }
 
+// Function to clear all conversations
+async function clearAllConversations() {
+    if (!confirm('Are you sure you want to delete all conversations? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/conversations/clear/', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to clear conversations');
+        }
+        
+        const result = await response.json();
+        showNotification(result.message || 'All conversations cleared successfully', 'success');
+        
+        // Reload conversations
+        loadConversations();
+        
+        // Clear current conversation view
+        const chatMessages = document.getElementById('chat-messages');
+        if (chatMessages) {
+            chatMessages.innerHTML = '<div class="empty-state">No messages yet. Start the conversation!</div>';
+        }
+        
+        const titleElement = document.getElementById('current-conversation-title');
+        if (titleElement) {
+            titleElement.textContent = 'Select or create a conversation';
+        }
+        
+        currentConversationId = null;
+    } catch (error) {
+        console.error('Error clearing conversations:', error);
+        showNotification('Failed to clear conversations: ' + error.message, 'error');
+    }
+}
+
+// Function to clear all documents
+async function clearAllDocuments() {
+    if (!confirm('Are you sure you want to delete all documents? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/documents/clear/', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to clear documents');
+        }
+        
+        const result = await response.json();
+        showNotification(result.message || 'All documents cleared successfully', 'success');
+        
+        // Reload documents
+        loadDocuments();
+    } catch (error) {
+        console.error('Error clearing documents:', error);
+        showNotification('Failed to clear documents: ' + error.message, 'error');
+    }
+}
+
 // Initialize event listeners when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Feather icons
@@ -1280,5 +1353,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const renameChatBtn = document.getElementById('rename-chat-btn');
     if (renameChatBtn) {
         renameChatBtn.addEventListener('click', renameCurrentChat);
+    }
+    
+    // Set up clear all conversations button handler
+    const clearAllConversationsBtn = document.getElementById('clear-all-conversations-btn');
+    if (clearAllConversationsBtn) {
+        clearAllConversationsBtn.addEventListener('click', clearAllConversations);
+    }
+    
+    // Set up clear all documents button handler
+    const clearAllDocumentsBtn = document.getElementById('clear-all-documents-btn');
+    if (clearAllDocumentsBtn) {
+        clearAllDocumentsBtn.addEventListener('click', clearAllDocuments);
     }
 });
