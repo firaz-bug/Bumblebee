@@ -388,7 +388,8 @@ async function deleteDocument(documentId) {
     }
     
     try {
-        const response = await fetch(`/api/documents/${documentId}/delete/`, {
+        // Using the correct endpoint pattern
+        const response = await fetch(`/api/documents/${documentId}/`, {
             method: 'DELETE',
             headers: {
                 'X-CSRFToken': getCSRFToken()
