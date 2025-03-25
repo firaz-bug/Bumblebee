@@ -100,15 +100,15 @@
         
         /* Incidents column sections */
         .incident-details {
-            height: 25%;
+            height: 40%;
             padding: 1rem;
             border-bottom: 1px solid var(--color-border);
             overflow-y: auto;
         }
         
         .incident-summary {
-            height: 25%;
-            padding: 1rem;
+            height: 10%;
+            /* padding: 1rem; */
             border-bottom: 1px solid var(--color-border);
             overflow-y: auto;
         }
@@ -223,7 +223,7 @@
         }
         
         .conversations-sidebar {
-            width: 30%;
+            width: 40%;
             border-right: 1px solid var(--color-border);
             display: flex;
             flex-direction: column;
@@ -450,6 +450,13 @@
                     </button>
                 </div>
                 <div class="chat-body">
+                   
+                    
+                    <!-- Chat content area -->
+                    <div class="chat-content">
+                        {% block content %}{% endblock %}
+                    </div>
+
                     <div class="conversations-sidebar">
                         <div class="sidebar-header">
                             <h3>Conversations</h3>
@@ -477,11 +484,6 @@
                                 <i data-feather="upload"></i> Upload Document
                             </button>
                         </div>
-                    </div>
-                    
-                    <!-- Chat content area -->
-                    <div class="chat-content">
-                        {% block content %}{% endblock %}
                     </div>
                 </div>
             </div>

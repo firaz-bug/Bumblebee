@@ -819,10 +819,6 @@ function updateIncidentsSummary(incidents) {
                     <span>${resolvedIncidents}</span>
                 </div>
             </div>
-            
-            <div class="summary-note">
-                <p>Select an incident for details</p>
-            </div>
         </div>
     `;
     
