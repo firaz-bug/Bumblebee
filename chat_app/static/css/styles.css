@@ -1,5 +1,5 @@
 :root {
-    --color-primary: #0052cc;
+    --color-primary: #D71E28; /* Wells Fargo red */
     --color-bg: #ffffff;
     --color-bg-secondary: #f4f5f7;
     --color-text: #172b4d;
@@ -14,6 +14,13 @@
     --color-recommended-border: #ffd54f;
     --color-wells-fargo-red: #D71E28;
     --color-sidebar-bg: #f8f9fa;
+    
+    /* Wells Fargo specific colors */
+    --wf-red: #D71E28;
+    --wf-light-red: #f8d7da;
+    --wf-dark-gray: #333333;
+    --wf-gray: #767676;
+    --wf-light-gray: #f8f9fa;
 
     --spacing-xs: 4px;
     --spacing-sm: 8px;
@@ -75,20 +82,31 @@ body {
     overflow-y: auto;
     padding: var(--spacing-lg);
     background: var(--color-bg);
+    display: flex;
+    flex-direction: column;
 }
 
 .message {
-    display: flex;
     margin-bottom: var(--spacing-md);
     animation: fadeIn 0.3s ease;
+    max-width: 80%;
+    border-radius: var(--border-radius-md);
+    padding: var(--spacing-md);
 }
 
-.message.user {
-    justify-content: flex-end;
+.user-message {
+    background-color: var(--color-primary);
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 2px;
 }
 
-.message.assistant {
-    justify-content: flex-start;
+.assistant-message {
+    background-color: var(--color-assistant-message-bg);
+    color: var(--color-text);
+    align-self: flex-start;
+    border: 1px solid var(--color-border);
+    border-bottom-left-radius: 2px;
 }
 
 .message-content {
