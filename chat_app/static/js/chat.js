@@ -344,7 +344,7 @@ async function deleteDocument(documentId) {
     }
     
     try {
-        const response = await fetch(`/api/documents/${documentId}/`, {
+        const response = await fetch(`/api/documents/${documentId}/delete/`, {
             method: 'DELETE',
             headers: {
                 'X-CSRFToken': getCSRFToken()
