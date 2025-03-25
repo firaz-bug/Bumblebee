@@ -779,6 +779,14 @@ function setupModals() {
             const modal = this.closest('.modal');
             if (modal) {
                 modal.style.display = 'none';
+                
+                // Reset form if this is the status update modal
+                if (modal.id === 'status-update-modal') {
+                    const commentsField = document.getElementById('status-comments');
+                    if (commentsField) {
+                        commentsField.value = '';
+                    }
+                }
             }
         });
     });
@@ -788,6 +796,14 @@ function setupModals() {
         modals.forEach(modal => {
             if (event.target === modal) {
                 modal.style.display = 'none';
+                
+                // Reset form if this is the status update modal
+                if (modal.id === 'status-update-modal') {
+                    const commentsField = document.getElementById('status-comments');
+                    if (commentsField) {
+                        commentsField.value = '';
+                    }
+                }
             }
         });
     });
@@ -856,6 +872,12 @@ function setupModals() {
             
             // Call the update function
             updateIncidentStatus(incidentId, newStatus, comments);
+            
+            // Close the modal
+            statusModal.style.display = 'none';
+            
+            // Clear the comments field for next time
+            document.getElementById('status-comments').value = '';
         });
     }
     
@@ -866,6 +888,12 @@ function setupModals() {
             const statusModal = document.getElementById('status-update-modal');
             if (statusModal) {
                 statusModal.style.display = 'none';
+                
+                // Clear the comments field
+                const commentsField = document.getElementById('status-comments');
+                if (commentsField) {
+                    commentsField.value = '';
+                }
             }
         });
     }
