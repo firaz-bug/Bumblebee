@@ -9,10 +9,10 @@
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
     <style>
         html, body {
-            height: 100%;
+            height: 100vh;
             margin: 0;
             padding: 0;
-            overflow: hidden;
+            overflow: auto;
         }
         
         :root {
@@ -70,7 +70,8 @@
         
         .app-container {
             display: flex;
-            height: calc(100% - 60px); /* Account for header height precisely */
+            height: calc(100vh - 60px); /* Account for header height precisely */
+            min-height: 500px;
         }
 
         /* Column widths as requested */
@@ -477,7 +478,7 @@
                 <span class="modal-close">&times;</span>
                 <h2>Update Incident Status</h2>
                 <p>Please provide comments about this status update:</p>
-                <form id="status-update-form">
+                <form id="update-comments-form">
                     <div class="form-group">
                         <label for="status-comments">Comments</label>
                         <textarea id="status-comments" name="comments" rows="4" placeholder="Describe the reason for this status change..." required></textarea>
