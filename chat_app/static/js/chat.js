@@ -203,8 +203,9 @@ async function renameCurrentChat() {
     }
     
     try {
+        // Using PATCH method as it's more appropriate for partial updates
         const response = await fetch(`/api/conversations/${currentConversationId}/`, {
-            method: 'PUT',
+            method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCSRFToken()
@@ -215,7 +216,7 @@ async function renameCurrentChat() {
         });
         
         if (!response.ok) {
-            throw new Error('Failed to rename conversation');
+            throw new Error(`Failed to rename conversation: ${response.status} ${response.statusText}`);
         }
         
         const updatedConversation = await response.json();
@@ -226,11 +227,20 @@ async function renameCurrentChat() {
             titleElement.textContent = updatedConversation.title;
         }
         
-        // Reload conversations to update the list
-        await loadConversations();
+        // Update the title in the conversation list
+        const conversationItem = document.querySelector(`.conversation-item[data-id="${currentConversationId}"]`);
+        if (conversationItem) {
+            const titleElement = conversationItem.querySelector('.conversation-title');
+            if (titleElement) {
+                titleElement.textContent = updatedConversation.title;
+            }
+        }
+        
+        // Notify the user
+        showNotification('Conversation renamed successfully', 'success');
     } catch (error) {
         console.error('Error renaming conversation:', error);
-        alert('Failed to rename conversation. Please try again.');
+        showNotification('Failed to rename conversation. Please try again.', 'error');
     }
 }
 
