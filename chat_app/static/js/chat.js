@@ -396,12 +396,16 @@ function renderDocumentsList(documents) {
     
     let html = '';
     documents.forEach(doc => {
+        const fileTypeIcon = getFileTypeIcon(doc.file_type);
         html += `
             <div class="document-item" data-id="${doc.id}">
-                <div class="document-title">${doc.title}</div>
-                <div class="document-type">${doc.file_type}</div>
+                <div class="document-info">
+                    <i data-feather="${fileTypeIcon}" class="document-icon"></i>
+                    <div class="document-title">${doc.title}</div>
+                    <div class="document-type">${doc.file_type.toUpperCase()}</div>
+                </div>
                 <div class="document-actions">
-                    <button class="delete-document-btn" data-id="${doc.id}">
+                    <button class="delete-document-btn" data-id="${doc.id}" title="Delete document">
                         <i data-feather="trash-2"></i>
                     </button>
                 </div>
@@ -416,11 +420,32 @@ function renderDocumentsList(documents) {
     
     // Add event listeners to delete buttons
     document.querySelectorAll('.delete-document-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent triggering parent click events
             const documentId = this.dataset.id;
             deleteDocument(documentId);
         });
     });
+}
+
+// Helper function to get the appropriate icon for file type
+function getFileTypeIcon(fileType) {
+    const type = fileType.toLowerCase();
+    if (type.includes('pdf')) {
+        return 'file-text';
+    } else if (type.includes('doc') || type.includes('word')) {
+        return 'file-text';
+    } else if (type.includes('txt') || type.includes('text')) {
+        return 'file';
+    } else if (type.includes('xls') || type.includes('sheet') || type.includes('csv')) {
+        return 'grid';
+    } else if (type.includes('ppt') || type.includes('presentation')) {
+        return 'monitor';
+    } else if (type.includes('jpg') || type.includes('jpeg') || type.includes('png') || type.includes('gif')) {
+        return 'image';
+    } else {
+        return 'file';
+    }
 }
 
 // Function to delete a document
