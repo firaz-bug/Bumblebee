@@ -2,6 +2,7 @@
 
 // Global state
 let currentIncidentId = null;
+let currentConversationId = null;
 
 // Helper function to get CSRF token
 function getCSRFToken() {
@@ -16,53 +17,95 @@ function getCSRFToken() {
 async function loadConversations() {
     try {
         const response = await fetch('/api/conversations/');
-        if (response.ok) {
-            const conversations = await response.json();
-            const conversationsList = document.querySelector('.conversations-list');
-            if (!conversationsList) return;
-
-            conversationsList.innerHTML = conversations.map(conv => `
+        if (!response.ok) {
+            throw new Error('Failed to load conversations');
+        }
+        
+        const conversations = await response.json();
+        const conversationsList = document.getElementById('conversations-list');
+        if (!conversationsList) return;
+        
+        if (conversations.length === 0) {
+            conversationsList.innerHTML = '<div class="empty-state">No conversations yet</div>';
+            return;
+        }
+        
+        let html = '';
+        conversations.forEach(conv => {
+            html += `
                 <div class="conversation-item" data-id="${conv.id}">
-                    <i data-feather="message-square"></i>
-                    <span class="conversation-title">${conv.title}</span>
+                    <div class="conversation-title">${conv.title}</div>
+                    <div class="conversation-date">${new Date(conv.updated_at).toLocaleString()}</div>
                 </div>
-            `).join('');
-
-            // Re-initialize Feather icons
-            if (window.feather) {
-                feather.replace();
-            }
-
-            // Add click handlers to conversation items
-            document.querySelectorAll('.conversation-item').forEach(item => {
-                item.addEventListener('click', () => switchConversation(item.dataset.id));
+            `;
+        });
+        
+        conversationsList.innerHTML = html;
+        
+        // Add click event listeners
+        document.querySelectorAll('.conversation-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const conversationId = this.dataset.id;
+                switchConversation(conversationId);
             });
+        });
+        
+        // Select the first conversation by default if none is selected
+        if (!currentConversationId && conversations.length > 0) {
+            switchConversation(conversations[0].id);
         }
     } catch (error) {
         console.error('Error loading conversations:', error);
+        const conversationsList = document.getElementById('conversations-list');
+        if (conversationsList) {
+            conversationsList.innerHTML = '<div class="error">Failed to load conversations</div>';
+        }
     }
 }
 
 // Function to switch conversation
 async function switchConversation(conversationId) {
+    if (conversationId === currentConversationId) return;
+    
     try {
-        const response = await fetch(`/api/conversations/${conversationId}/messages/`);
-        if (response.ok) {
-            const messages = await response.json();
-
-            // Update active conversation
-            document.querySelectorAll('.conversation-item').forEach(item => {
+        currentConversationId = conversationId;
+        
+        // Highlight the selected conversation
+        document.querySelectorAll('.conversation-item').forEach(item => {
+            if (item.dataset.id === conversationId) {
+                item.classList.add('active');
+            } else {
                 item.classList.remove('active');
-                if (item.dataset.id === conversationId) {
-                    item.classList.add('active');
-                }
-            });
-
-            // Display messages
-            displayMessages(messages);
+            }
+        });
+        
+        const response = await fetch(`/api/conversations/${conversationId}/`);
+        if (!response.ok) {
+            throw new Error('Failed to load conversation details');
+        }
+        
+        const conversation = await response.json();
+        
+        // Update conversation title
+        const titleElement = document.getElementById('current-conversation-title');
+        if (titleElement) {
+            titleElement.textContent = conversation.title;
+        }
+        
+        // Display messages
+        displayMessages(conversation.messages);
+        
+        // Scroll to bottom of chat
+        const chatMessages = document.getElementById('chat-messages');
+        if (chatMessages) {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
         }
     } catch (error) {
         console.error('Error switching conversation:', error);
+        const chatMessages = document.getElementById('chat-messages');
+        if (chatMessages) {
+            chatMessages.innerHTML = '<div class="error">Failed to load conversation</div>';
+        }
     }
 }
 
@@ -70,17 +113,27 @@ async function switchConversation(conversationId) {
 function displayMessages(messages) {
     const chatMessages = document.getElementById('chat-messages');
     if (!chatMessages) return;
-
-    chatMessages.innerHTML = messages.map(msg => `
-        <div class="message ${msg.role}-message">
-            <div class="message-content">${msg.content}</div>
-        </div>
-    `).join('');
-
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    if (messages.length === 0) {
+        chatMessages.innerHTML = '<div class="empty-state">No messages yet. Start the conversation!</div>';
+        return;
+    }
+    
+    let html = '';
+    messages.forEach(msg => {
+        const messageClass = msg.role === 'user' ? 'user-message' : 'assistant-message';
+        html += `
+            <div class="message ${messageClass}">
+                <div class="message-content">${msg.content}</div>
+                <div class="message-time">${new Date(msg.created_at).toLocaleTimeString()}</div>
+            </div>
+        `;
+    });
+    
+    chatMessages.innerHTML = html;
 }
 
-// Function to create new chat
+// Function to create a new chat
 async function createNewChat() {
     try {
         const response = await fetch('/api/conversations/', {
@@ -93,80 +146,136 @@ async function createNewChat() {
                 title: 'New Conversation'
             })
         });
-
-        if (response.ok) {
-            const newConversation = await response.json();
-            await loadConversations();
-            switchConversation(newConversation.id);
+        
+        if (!response.ok) {
+            throw new Error('Failed to create new conversation');
+        }
+        
+        const newConversation = await response.json();
+        
+        // Reload conversations and switch to the new one
+        await loadConversations();
+        switchConversation(newConversation.id);
+        
+        // Clear the chat input
+        const chatInput = document.getElementById('chat-input');
+        if (chatInput) {
+            chatInput.value = '';
         }
     } catch (error) {
-        console.error('Error creating new chat:', error);
+        console.error('Error creating new conversation:', error);
+        alert('Failed to create new conversation. Please try again.');
     }
 }
 
-// Function to delete current chat
+// Function to delete the current chat
 async function deleteCurrentChat() {
-    const activeChat = document.querySelector('.conversation-item.active');
-    if (!activeChat) return;
-
-    const conversationId = activeChat.dataset.id;
+    if (!currentConversationId) return;
+    
+    if (!confirm('Are you sure you want to delete this conversation?')) {
+        return;
+    }
+    
     try {
-        const response = await fetch(`/api/conversations/${conversationId}/`, {
+        const response = await fetch(`/api/conversations/${currentConversationId}/`, {
             method: 'DELETE',
             headers: {
                 'X-CSRFToken': getCSRFToken()
             }
         });
-
-        if (response.ok) {
-            await loadConversations();
-            // Switch to first conversation or create new one if none exist
-            const firstConv = document.querySelector('.conversation-item');
-            if (firstConv) {
-                switchConversation(firstConv.dataset.id);
-            } else {
-                createNewChat();
-            }
+        
+        if (!response.ok) {
+            throw new Error('Failed to delete conversation');
         }
+        
+        currentConversationId = null;
+        
+        // Reload conversations
+        await loadConversations();
     } catch (error) {
-        console.error('Error deleting chat:', error);
+        console.error('Error deleting conversation:', error);
+        alert('Failed to delete conversation. Please try again.');
     }
 }
 
 // Function to handle chat form submission
 async function handleChatSubmit(event) {
     event.preventDefault();
-    const input = document.getElementById('chat-input');
-    if (!input) return;
     
-    const message = input.value.trim();
-    if (!message) return;
-
-    const activeChat = document.querySelector('.conversation-item.active');
-    if (!activeChat) {
-        alert('Please select or create a conversation first');
+    const chatInput = document.getElementById('chat-input');
+    if (!chatInput || !chatInput.value.trim() || !currentConversationId) {
         return;
     }
-
+    
+    const userMessage = chatInput.value.trim();
+    chatInput.value = '';
+    
+    // Display user message immediately
+    const chatMessages = document.getElementById('chat-messages');
+    if (chatMessages) {
+        const newMessage = document.createElement('div');
+        newMessage.className = 'message user-message';
+        newMessage.innerHTML = `
+            <div class="message-content">${userMessage}</div>
+            <div class="message-time">${new Date().toLocaleTimeString()}</div>
+        `;
+        chatMessages.appendChild(newMessage);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    // Add loading indicator
+    const loadingMessage = document.createElement('div');
+    loadingMessage.className = 'message assistant-message loading';
+    loadingMessage.innerHTML = '<div class="message-content">Thinking...</div>';
+    chatMessages.appendChild(loadingMessage);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
     try {
-        const response = await fetch(`/api/conversations/${activeChat.dataset.id}/messages/`, {
+        const response = await fetch(`/api/conversations/${currentConversationId}/messages/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCSRFToken()
             },
             body: JSON.stringify({
-                content: message
+                role: 'user',
+                content: userMessage
             })
         });
-
-        if (response.ok) {
-            const messages = await response.json();
-            displayMessages(messages);
-            input.value = '';
+        
+        if (!response.ok) {
+            throw new Error('Failed to send message');
         }
+        
+        // Fetch updated conversation with assistant response
+        const conversationResponse = await fetch(`/api/conversations/${currentConversationId}/`);
+        if (!conversationResponse.ok) {
+            throw new Error('Failed to get conversation updates');
+        }
+        
+        const updatedConversation = await conversationResponse.json();
+        
+        // Remove loading indicator
+        chatMessages.removeChild(loadingMessage);
+        
+        // Display all messages
+        displayMessages(updatedConversation.messages);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
     } catch (error) {
         console.error('Error sending message:', error);
+        
+        // Remove loading indicator
+        if (loadingMessage.parentNode) {
+            chatMessages.removeChild(loadingMessage);
+        }
+        
+        // Display error message
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'message system-message error';
+        errorMessage.innerHTML = `<div class="message-content">Error: Failed to send message. Please try again.</div>`;
+        chatMessages.appendChild(errorMessage);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 }
 
@@ -180,6 +289,7 @@ async function loadDocuments() {
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }
+        
         const documents = await response.json();
         renderDocumentsList(documents);
     } catch (error) {
@@ -188,56 +298,69 @@ async function loadDocuments() {
     }
 }
 
-// Function to render the documents list
+// Function to render documents list
 function renderDocumentsList(documents) {
     const documentsList = document.getElementById('documents-list');
     if (!documentsList) return;
     
     if (documents.length === 0) {
-        documentsList.innerHTML = '<div class="empty-documents">No documents uploaded yet.</div>';
+        documentsList.innerHTML = '<div class="empty-state">No documents uploaded yet</div>';
         return;
     }
     
     let html = '';
-    documents.forEach(document => {
+    documents.forEach(doc => {
         html += `
-            <div class="document-item">
-                <div class="document-icon"><i data-feather="file-text"></i></div>
-                <div class="document-title">${document.title}</div>
-                <button class="document-delete" onclick="deleteDocument('${document.id}')" title="Delete document">
-                    <i data-feather="trash-2"></i>
-                </button>
+            <div class="document-item" data-id="${doc.id}">
+                <div class="document-title">${doc.title}</div>
+                <div class="document-type">${doc.file_type}</div>
+                <div class="document-actions">
+                    <button class="delete-document-btn" data-id="${doc.id}">
+                        <i data-feather="trash-2"></i>
+                    </button>
+                </div>
             </div>
         `;
     });
     
     documentsList.innerHTML = html;
+    
+    // Initialize feather icons
+    feather.replace();
+    
+    // Add event listeners to delete buttons
+    document.querySelectorAll('.delete-document-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const documentId = this.dataset.id;
+            deleteDocument(documentId);
+        });
+    });
 }
 
 // Function to delete a document
-function deleteDocument(documentId) {
+async function deleteDocument(documentId) {
     if (!confirm('Are you sure you want to delete this document?')) {
         return;
     }
     
-    fetch(`/api/documents/${documentId}/`, {
-        method: 'DELETE',
-        headers: {
-            'X-CSRFToken': getCSRFToken()
-        }
-    })
-    .then(response => {
+    try {
+        const response = await fetch(`/api/documents/${documentId}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
+        });
+        
         if (!response.ok) {
-            throw new Error('Network response was not ok');
+            throw new Error('Failed to delete document');
         }
         
-        // Reload the documents list
+        // Reload documents
         loadDocuments();
-    })
-    .catch(error => {
+    } catch (error) {
         console.error('Error deleting document:', error);
         alert('Failed to delete document. Please try again.');
-    });
+    }
 }
 
 // Function to render the incidents list
@@ -246,325 +369,342 @@ function renderIncidentsList(incidents) {
     if (!incidentsList) return;
     
     if (incidents.length === 0) {
-        incidentsList.innerHTML = '<div class="loading-incidents">No incidents available.</div>';
+        incidentsList.innerHTML = '<div class="empty-state">No incidents available</div>';
         return;
     }
     
-    // Sort incidents by severity and status
-    // Critical/High severity open incidents first, then medium, then low
-    incidents.sort((a, b) => {
-        // First sort by status (open > in-progress > resolved)
-        const statusOrder = { 'open': 0, 'in-progress': 1, 'resolved': 2 };
-        const statusA = statusOrder[a.status.toLowerCase().replace(' ', '-')] || 99;
-        const statusB = statusOrder[b.status.toLowerCase().replace(' ', '-')] || 99;
-        
-        if (statusA !== statusB) return statusA - statusB;
-        
-        // Then by severity (high > medium > low)
-        const severityOrder = { 'high': 0, 'medium': 1, 'low': 2 };
-        const sevA = severityOrder[a.severity.toLowerCase()] || 99;
-        const sevB = severityOrder[b.severity.toLowerCase()] || 99;
-        
-        if (sevA !== sevB) return sevA - sevB;
-        
-        // Finally by creation date (newest first)
-        return new Date(b.created_at) - new Date(a.created_at);
-    });
-    
     let html = '';
     incidents.forEach(incident => {
-        const severityClass = incident.severity.toLowerCase();
-        const statusClass = incident.status.toLowerCase().replace(' ', '-');
-        
         html += `
-            <div class="incident-item" data-id="${incident.id}" onclick="showIncidentDetails(${JSON.stringify(incident).replace(/"/g, '&quot;')}); highlightIncident(this);">
-                <div class="incident-severity ${severityClass}">${incident.severity}</div>
+            <div class="incident-item" data-id="${incident.id}">
+                <div class="incident-severity ${incident.severity}">${incident.severity}</div>
                 <div class="incident-title">${incident.title}</div>
-                <div class="incident-status ${statusClass}">${incident.status}</div>
-                <div class="incident-time">${new Date(incident.created_at).toLocaleString()}</div>
+                <div class="incident-status ${incident.status.toLowerCase().replace(' ', '-')}">${incident.status}</div>
             </div>
         `;
     });
     
     incidentsList.innerHTML = html;
+    
+    // Add click event listeners
+    document.querySelectorAll('.incident-item').forEach(item => {
+        item.addEventListener('click', function() {
+            highlightIncident(this);
+            const incidentId = this.dataset.id;
+            fetchIncidentDetails(incidentId);
+        });
+    });
 }
 
-// Function to show incident details when clicked
+// Function to show incident details
 function showIncidentDetails(incident) {
     const detailsContainer = document.getElementById('incident-details');
     if (!detailsContainer) return;
     
-    // Store current incident ID for status updates
     currentIncidentId = incident.id;
     
-    // Format the date
+    // Prepare status options
+    const statusOptions = ['Open', 'In Progress', 'Resolved'].map(status => {
+        const value = status.toLowerCase().replace(' ', '-');
+        const selected = (incident.status.toLowerCase().replace(' ', '-') === value) ? 'selected' : '';
+        return `<option value="${value}" ${selected}>${status}</option>`;
+    }).join('');
+    
+    // Format created and updated dates
     const createdDate = new Date(incident.created_at).toLocaleString();
     const updatedDate = new Date(incident.updated_at).toLocaleString();
     
-    // Generate impact summary
-    const impactSummary = getIncidentImpactSummary(incident);
-    
-    // Create the HTML for the incident details
+    // Build the HTML for the details section
     let html = `
         <h3>${incident.title}</h3>
         <div class="incident-detail-row">
-            <div class="incident-severity ${incident.severity.toLowerCase()}">${incident.severity}</div>
-            <div class="incident-status ${incident.status.toLowerCase().replace(' ', '-')}">${incident.status}</div>
+            <span class="detail-label">Severity:</span>
+            <span class="detail-value ${incident.severity}">${incident.severity}</span>
         </div>
-        <div class="incident-description">${incident.description}</div>
-        <div class="incident-impact">${impactSummary}</div>
-        <div class="incident-timestamps">
-            <div>Created: ${createdDate}</div>
-            <div>Last Updated: ${updatedDate}</div>
+        <div class="incident-detail-row">
+            <span class="detail-label">Status:</span>
+            <select id="incident-status" class="status-select ${incident.status.toLowerCase().replace(' ', '-')}">
+                ${statusOptions}
+            </select>
+        </div>
+        <div class="incident-detail-row">
+            <span class="detail-label">Created:</span>
+            <span class="detail-value">${createdDate}</span>
+        </div>
+        <div class="incident-detail-row">
+            <span class="detail-label">Updated:</span>
+            <span class="detail-value">${updatedDate}</span>
+        </div>
+        <div class="incident-description">
+            <span class="detail-label">Description:</span>
+            <p>${incident.description}</p>
         </div>
     `;
     
-    // Add comments section if available
+    // Add comments section if there are comments
     if (incident.comments) {
         html += `
             <div class="incident-comments">
-                <h4>Comments:</h4>
-                <div class="comments-content">${incident.comments}</div>
+                <span class="detail-label">Comments:</span>
+                <p>${incident.comments}</p>
             </div>
         `;
     }
     
-    // Add status update controls
-    html += `
-        <div id="incident-status-controls" class="incident-status-update" style="display: flex;">
-            <label for="status-select">Status:</label>
-            <select id="status-select" class="status-select">
-                <option value="open">Open</option>
-                <option value="in-progress">In Progress</option>
-                <option value="resolved">Resolved</option>
-            </select>
-            <button id="update-status-btn" class="update-status-btn">Update</button>
-        </div>
-    `;
-    
-    // Get the newly created status controls
     detailsContainer.innerHTML = html;
     
-    const statusSelect = document.getElementById('status-select');
-    
-    // Set current status as selected
-    if (statusSelect) {
-        // Convert status to lowercase and replace spaces with hyphens to match option values
-        const currentStatus = incident.status.toLowerCase().replace(' ', '-');
-        
-        // Find and select the matching option
-        for (let i = 0; i < statusSelect.options.length; i++) {
-            if (statusSelect.options[i].value === currentStatus) {
-                statusSelect.selectedIndex = i;
-                break;
-            }
-        }
-    }
-    
-    // Set up event listener for the update button
-    const updateButton = document.getElementById('update-status-btn');
-    if (updateButton) {
-        // Add new event listener
-        updateButton.addEventListener('click', function() {
-            const newStatus = document.getElementById('status-select').value;
-            
-            // Store the current incident ID and status in the form for later use
-            const statusModal = document.getElementById('status-update-modal');
-            if (statusModal) {
-                statusModal.dataset.incidentId = currentIncidentId;
-                statusModal.dataset.newStatus = newStatus;
-                
-                // Show the comments modal
-                statusModal.style.display = 'block';
-            }
+    // Add event listener for the status dropdown
+    const statusDropdown = document.getElementById('incident-status');
+    if (statusDropdown) {
+        statusDropdown.addEventListener('change', function() {
+            showStatusUpdateModal(incident.id, this.value);
         });
     }
     
-    // Fetch incident details with recommendations
-    fetch(`/api/incidents/${incident.id}/`)
+    // Fetch recommendations based on the incident
+    fetchRecommendations(incident.id);
+}
+
+// Function to fetch incident details
+function fetchIncidentDetails(incidentId) {
+    fetch(`/api/incidents/${incidentId}/`)
         .then(response => {
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                throw new Error('Failed to fetch incident details');
             }
             return response.json();
         })
-        .then(data => {
-            // Update recommendations based on incident
-            updateRecommendedAutomations(data.recommended_automations || []);
-            updateRecommendedDashboards(data.recommended_dashboards || []);
+        .then(incident => {
+            showIncidentDetails(incident);
         })
         .catch(error => {
-            console.error('Error fetching incident recommendations:', error);
+            console.error('Error fetching incident details:', error);
+            const detailsContainer = document.getElementById('incident-details');
+            if (detailsContainer) {
+                detailsContainer.innerHTML = '<div class="error">Failed to load incident details</div>';
+            }
         });
 }
 
-// Helper function to generate impact summary based on incident severity and status
-function getIncidentImpactSummary(incident) {
-    if (incident.severity === 'high' && incident.status === 'open') {
-        return 'This incident requires immediate attention as it may be causing significant service disruption.';
-    } else if (incident.severity === 'high' && incident.status === 'resolved') {
-        return 'This critical incident has been resolved. A post-mortem analysis is recommended.';
-    } else if (incident.severity === 'medium') {
-        return 'This incident has moderate impact on services and should be addressed promptly.';
-    } else if (incident.severity === 'low') {
-        return 'This is a low-impact incident that should be monitored but is not causing significant issues.';
-    } else {
-        return 'Monitor this incident for any changes or escalations that may require attention.';
-    }
+// Function to fetch recommendations based on incident
+function fetchRecommendations(incidentId) {
+    // Fetch automations
+    fetch(`/api/incidents/${incidentId}/`)
+        .then(response => response.json())
+        .then(incident => {
+            // Get recommended automations
+            const relevantAutomations = incident.recommended_automations || [];
+            updateRecommendedAutomations(relevantAutomations);
+            
+            // Get recommended dashboards
+            const relevantDashboards = incident.recommended_dashboards || [];
+            updateRecommendedDashboards(relevantDashboards);
+        })
+        .catch(error => {
+            console.error('Error fetching recommendations:', error);
+        });
 }
 
-// Function to highlight selected incident in the list
+// Function to highlight the selected incident
 function highlightIncident(element) {
     // Remove highlight from other incidents
     document.querySelectorAll('.incident-item').forEach(item => {
-        item.classList.remove('selected');
+        item.style.backgroundColor = 'white';
     });
-    
-    // Add highlight to the clicked incident
-    element.classList.add('selected');
+    // Highlight clicked incident
+    element.style.backgroundColor = '#f0f0f0';
+}
+
+// Function to show the status update modal
+function showStatusUpdateModal(incidentId, newStatus) {
+    const modal = document.getElementById('status-update-modal');
+    if (modal) {
+        modal.style.display = 'block';
+        modal.dataset.incidentId = incidentId;
+        modal.dataset.newStatus = newStatus;
+        
+        // Update modal title
+        const modalTitle = modal.querySelector('.modal-title');
+        if (modalTitle) {
+            const statusText = newStatus.replace('-', ' ');
+            modalTitle.textContent = `Update Status to ${statusText.charAt(0).toUpperCase() + statusText.slice(1)}`;
+        }
+    }
 }
 
 // Function to update incident status
 function updateIncidentStatus(incidentId, newStatus, comments = '') {
+    // Format the status value for the API (convert to title case)
+    let apiStatus = newStatus.replace(/-/g, ' ').replace(/\w\S*/g, 
+        function(txt) {
+            return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+        }
+    );
+    
+    // Prepare request data
+    const requestData = {
+        status: apiStatus
+    };
+    
+    // Add comments if provided
+    if (comments) {
+        requestData.comments = comments;
+    }
+    
+    // Send PUT request to update incident
     fetch(`/api/incidents/${incidentId}/`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': getCSRFToken()
         },
-        body: JSON.stringify({
-            status: newStatus,
-            comments: comments
-        })
+        body: JSON.stringify(requestData)
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error('Network response was not ok');
+            throw new Error('Failed to update incident status');
         }
         return response.json();
     })
     .then(updatedIncident => {
-        // Close the modal
-        const statusModal = document.getElementById('status-update-modal');
-        if (statusModal) {
-            statusModal.style.display = 'none';
-        }
-        
-        // Update the incident in the UI
-        updateIncidentInList(updatedIncident);
-        
-        // Refresh the details view
+        // Update the UI with the new incident data
         showIncidentDetails(updatedIncident);
         
-        // Refresh the incidents list to reflect the changes
+        // Also update the incident in the list
+        updateIncidentInList(updatedIncident);
+        
+        // Show success message
+        const detailsContainer = document.getElementById('incident-details');
+        const successMsg = document.createElement('div');
+        successMsg.className = 'status-update-success';
+        successMsg.textContent = `Status updated to ${apiStatus}`;
+        successMsg.style.color = 'green';
+        successMsg.style.marginTop = '10px';
+        detailsContainer.appendChild(successMsg);
+        
+        // Remove success message after 3 seconds
+        setTimeout(() => {
+            if (successMsg.parentNode) {
+                successMsg.parentNode.removeChild(successMsg);
+            }
+        }, 3000);
+        
+        // Reload the incidents list to reflect the updates
         loadIncidents();
     })
     .catch(error => {
         console.error('Error updating incident status:', error);
-        alert('Failed to update incident status. Please try again.');
+        // Show error message
+        const detailsContainer = document.getElementById('incident-details');
+        const errorMsg = document.createElement('div');
+        errorMsg.className = 'status-update-error';
+        errorMsg.textContent = 'Failed to update status. Please try again.';
+        errorMsg.style.color = 'red';
+        errorMsg.style.marginTop = '10px';
+        detailsContainer.appendChild(errorMsg);
+        
+        // Remove error message after 3 seconds
+        setTimeout(() => {
+            if (errorMsg.parentNode) {
+                errorMsg.parentNode.removeChild(errorMsg);
+            }
+        }, 3000);
     });
 }
 
-// Function to update a specific incident in the list
+// Function to update a single incident in the list
 function updateIncidentInList(updatedIncident) {
-    const incidentItems = document.querySelectorAll('.incident-item');
-    incidentItems.forEach(item => {
-        if (item.dataset.id === updatedIncident.id) {
-            const statusElement = item.querySelector('.incident-status');
-            if (statusElement) {
-                // Update status class
-                const oldStatusClass = statusElement.className.split(' ')[1];
-                const newStatusClass = updatedIncident.status.toLowerCase().replace(' ', '-');
-                statusElement.classList.remove(oldStatusClass);
-                statusElement.classList.add(newStatusClass);
-                
-                // Update status text
-                statusElement.textContent = updatedIncident.status;
-            }
+    const incidentElement = document.querySelector(`.incident-item[data-id="${updatedIncident.id}"]`);
+    if (incidentElement) {
+        const statusElement = incidentElement.querySelector('.incident-status');
+        if (statusElement) {
+            // Update the status class and text
+            const oldStatusClass = statusElement.className.split(' ')[1];
+            const newStatusClass = updatedIncident.status.toLowerCase().replace(' ', '-');
+            statusElement.classList.remove(oldStatusClass);
+            statusElement.classList.add(newStatusClass);
+            statusElement.textContent = updatedIncident.status;
         }
-    });
+    }
 }
 
 // Function to update the incidents summary
 function updateIncidentsSummary(incidents) {
-    const summaryContent = document.getElementById('summary-content');
-    if (!summaryContent) return;
+    const summaryContainer = document.getElementById('incident-summary');
+    if (!summaryContainer) return;
     
     // Count incidents by status and severity
-    const counts = {
-        open: { high: 0, medium: 0, low: 0, total: 0 },
-        'in-progress': { high: 0, medium: 0, low: 0, total: 0 },
-        resolved: { high: 0, medium: 0, low: 0, total: 0 },
-        total: 0
-    };
+    let openIncidents = incidents.filter(inc => inc.status.toLowerCase() === 'open').length;
+    let inProgressIncidents = incidents.filter(inc => inc.status.toLowerCase().replace(' ', '-') === 'in-progress').length;
+    let resolvedIncidents = incidents.filter(inc => inc.status.toLowerCase() === 'resolved').length;
+    let highSeverityIncidents = incidents.filter(inc => inc.severity.toLowerCase() === 'high').length;
     
-    incidents.forEach(incident => {
-        const status = incident.status.toLowerCase().replace(' ', '-');
-        const severity = incident.severity.toLowerCase();
-        
-        if (counts[status]) {
-            counts[status][severity]++;
-            counts[status].total++;
-            counts.total++;
-        }
-    });
+    // Create the HTML for the incident summary section
+    let summaryHTML = `
+        <h3>Incidents Overview</h3>
+        <div class="summary-content">
+            <div class="summary-stats">
+                <div class="severity-item high">
+                    <span>High Severity</span>
+                    <span>${highSeverityIncidents}</span>
+                </div>
+                <div class="severity-item">
+                    <span>Open</span>
+                    <span>${openIncidents}</span>
+                </div>
+                <div class="severity-item">
+                    <span>In Progress</span>
+                    <span>${inProgressIncidents}</span>
+                </div>
+                <div class="severity-item">
+                    <span>Resolved</span>
+                    <span>${resolvedIncidents}</span>
+                </div>
+            </div>
+            
+            <div class="summary-note">
+                <p>Select an incident for details</p>
+            </div>
+        </div>
+    `;
     
-    // Generate summary HTML
-    let html = `<div class="summary-stats">
-        <div class="summary-row total">
-            <span class="summary-label">Total Incidents:</span>
-            <span class="summary-value">${counts.total}</span>
-        </div>
-        <div class="summary-row open">
-            <span class="summary-label">Open:</span>
-            <span class="summary-value">${counts.open.total}</span>
-            <span class="summary-breakdown">
-                <span class="high">${counts.open.high} High</span>
-                <span class="medium">${counts.open.medium} Medium</span>
-                <span class="low">${counts.open.low} Low</span>
-            </span>
-        </div>
-        <div class="summary-row in-progress">
-            <span class="summary-label">In Progress:</span>
-            <span class="summary-value">${counts['in-progress'].total}</span>
-            <span class="summary-breakdown">
-                <span class="high">${counts['in-progress'].high} High</span>
-                <span class="medium">${counts['in-progress'].medium} Medium</span>
-                <span class="low">${counts['in-progress'].low} Low</span>
-            </span>
-        </div>
-        <div class="summary-row resolved">
-            <span class="summary-label">Resolved:</span>
-            <span class="summary-value">${counts.resolved.total}</span>
-        </div>
-    </div>`;
-    
-    summaryContent.innerHTML = html;
+    // Update the summary container with our HTML
+    summaryContainer.innerHTML = summaryHTML;
 }
 
-// Update loadIncidents function to include summary
+// Function to load incidents
 function loadIncidents() {
     const incidentsList = document.getElementById('incidents-list');
     if (!incidentsList) return;
     
+    // Show loading indicator
+    incidentsList.innerHTML = '<div class="loading-incidents">Loading incidents...</div>';
+    
     fetch('/api/incidents/')
         .then(response => {
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
             }
             return response.json();
         })
         .then(incidents => {
-            renderIncidentsList(incidents);
-            updateIncidentsSummary(incidents);
+            if (Array.isArray(incidents)) {
+                renderIncidentsList(incidents);
+                updateIncidentsSummary(incidents);
+            } else {
+                throw new Error('Invalid incidents data format');
+            }
         })
         .catch(error => {
             console.error('Error loading incidents:', error);
-            incidentsList.innerHTML = '<div class="loading-incidents">Failed to load incidents. Please try again.</div>';
+            incidentsList.innerHTML = '<div class="loading-incidents error">Failed to load incidents. Please refresh the page or try again later.</div>';
+            
+            // Also update the summary with empty data
+            updateIncidentsSummary([]);
         });
 }
 
-// Function to load automations for the recommendations column
+// Function to load automations
 function loadAutomations() {
     const automationsList = document.getElementById('automations-list');
     if (!automationsList) return;
@@ -581,25 +721,40 @@ function loadAutomations() {
         })
         .catch(error => {
             console.error('Error loading automations:', error);
-            automationsList.innerHTML = '<div class="loading-automations">Failed to load automations. Please try again.</div>';
+            automationsList.innerHTML = '<div class="loading-error">Failed to load automations. Please try again.</div>';
         });
 }
 
-// Function to update recommended automations in the UI
-function updateRecommendedAutomations(recommendedIds) {
-    const automationItems = document.querySelectorAll('.automation-item');
+// Function to update recommended automations based on incident selection
+function updateRecommendedAutomations(automations) {
+    const automationsList = document.getElementById('automations-list');
+    if (!automationsList) return;
     
-    // Remove recommended class from all automations
-    automationItems.forEach(item => {
-        item.classList.remove('recommended');
+    // If no recommended automations, show message
+    if (!automations || automations.length === 0) {
+        automationsList.innerHTML = '<div class="empty-state">No relevant automations found for this incident</div>';
+        return;
+    }
+    
+    let html = '<h4>Recommended Automations</h4>';
+    automations.forEach(automation => {
+        html += `
+            <div class="automation-item recommended" data-id="${automation.id}">
+                <div class="automation-name">${automation.name}</div>
+                <div class="automation-description">${automation.description}</div>
+                <button class="run-btn" data-id="${automation.id}">Run</button>
+            </div>
+        `;
     });
     
-    // Add recommended class to matching automations
-    recommendedIds.forEach(id => {
-        const automationItem = document.querySelector(`.automation-item[data-id="${id}"]`);
-        if (automationItem) {
-            automationItem.classList.add('recommended');
-        }
+    automationsList.innerHTML = html;
+    
+    // Add event listeners to run buttons
+    document.querySelectorAll('.automation-item .run-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const automationId = this.dataset.id;
+            triggerAutomation(automationId);
+        });
     });
 }
 
@@ -609,7 +764,7 @@ function renderAutomationsList(automations) {
     if (!automationsList) return;
     
     if (automations.length === 0) {
-        automationsList.innerHTML = '<div class="empty-automations">No automations available.</div>';
+        automationsList.innerHTML = '<div class="empty-state">No automations available</div>';
         return;
     }
     
@@ -619,12 +774,20 @@ function renderAutomationsList(automations) {
             <div class="automation-item" data-id="${automation.id}">
                 <div class="automation-name">${automation.name}</div>
                 <div class="automation-description">${automation.description}</div>
-                <button class="run-btn" onclick="triggerAutomation('${automation.id}')">Run Automation</button>
+                <button class="run-btn" data-id="${automation.id}">Run</button>
             </div>
         `;
     });
     
     automationsList.innerHTML = html;
+    
+    // Add event listeners to run buttons
+    document.querySelectorAll('.automation-item .run-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const automationId = this.dataset.id;
+            triggerAutomation(automationId);
+        });
+    });
 }
 
 // Function to trigger an automation
@@ -634,16 +797,17 @@ function triggerAutomation(automationId) {
         headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': getCSRFToken()
-        }
+        },
+        body: JSON.stringify({})
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error('Network response was not ok');
+            throw new Error('Failed to trigger automation');
         }
         return response.json();
     })
-    .then(result => {
-        alert(`Automation triggered: ${result.message}`);
+    .then(data => {
+        alert(`Automation triggered successfully: ${data.message || 'Completed'}`);
     })
     .catch(error => {
         console.error('Error triggering automation:', error);
@@ -651,7 +815,7 @@ function triggerAutomation(automationId) {
     });
 }
 
-// Function to load dashboards for the recommendations column
+// Function to load dashboards
 function loadDashboards() {
     const dashboardsList = document.getElementById('dashboards-list');
     if (!dashboardsList) return;
@@ -668,26 +832,36 @@ function loadDashboards() {
         })
         .catch(error => {
             console.error('Error loading dashboards:', error);
-            dashboardsList.innerHTML = '<div class="loading-dashboards">Failed to load dashboards. Please try again.</div>';
+            dashboardsList.innerHTML = '<div class="loading-error">Failed to load dashboards. Please try again.</div>';
         });
 }
 
-// Function to update recommended dashboards in the UI
-function updateRecommendedDashboards(recommendedIds) {
-    const dashboardItems = document.querySelectorAll('.dashboard-item');
+// Function to update recommended dashboards based on incident selection
+function updateRecommendedDashboards(dashboards) {
+    const dashboardsList = document.getElementById('dashboards-list');
+    if (!dashboardsList) return;
     
-    // Remove recommended class from all dashboards
-    dashboardItems.forEach(item => {
-        item.classList.remove('recommended');
+    // If no recommended dashboards, show message
+    if (!dashboards || dashboards.length === 0) {
+        dashboardsList.innerHTML = '<div class="empty-state">No relevant dashboards found for this incident</div>';
+        return;
+    }
+    
+    let html = '<h4>Recommended Dashboards</h4>';
+    dashboards.forEach(dashboard => {
+        html += `
+            <div class="dashboard-item recommended">
+                <div class="dashboard-name">${dashboard.name}</div>
+                <div class="dashboard-description">${dashboard.description}</div>
+                <a href="${dashboard.link}" target="_blank" class="dashboard-link">Open Dashboard <i data-feather="external-link"></i></a>
+            </div>
+        `;
     });
     
-    // Add recommended class to matching dashboards
-    recommendedIds.forEach(id => {
-        const dashboardItem = document.querySelector(`.dashboard-item[data-id="${id}"]`);
-        if (dashboardItem) {
-            dashboardItem.classList.add('recommended');
-        }
-    });
+    dashboardsList.innerHTML = html;
+    
+    // Initialize feather icons
+    feather.replace();
 }
 
 // Function to render the dashboards list
@@ -696,25 +870,28 @@ function renderDashboardsList(dashboards) {
     if (!dashboardsList) return;
     
     if (dashboards.length === 0) {
-        dashboardsList.innerHTML = '<div class="empty-dashboards">No dashboards available.</div>';
+        dashboardsList.innerHTML = '<div class="empty-state">No dashboards available</div>';
         return;
     }
     
     let html = '';
     dashboards.forEach(dashboard => {
         html += `
-            <div class="dashboard-item" data-id="${dashboard.id}">
+            <div class="dashboard-item">
                 <div class="dashboard-name">${dashboard.name}</div>
                 <div class="dashboard-description">${dashboard.description}</div>
-                <a href="${dashboard.link}" target="_blank" class="view-link">View Dashboard</a>
+                <a href="${dashboard.link}" target="_blank" class="dashboard-link">Open Dashboard <i data-feather="external-link"></i></a>
             </div>
         `;
     });
     
     dashboardsList.innerHTML = html;
+    
+    // Initialize feather icons
+    feather.replace();
 }
 
-// Function to load system logs
+// Function to load logs for the recommendations column
 function loadLogs() {
     const logsList = document.getElementById('logs-list');
     if (!logsList) return;
@@ -731,7 +908,7 @@ function loadLogs() {
         })
         .catch(error => {
             console.error('Error loading logs:', error);
-            logsList.innerHTML = '<div class="loading-logs">Failed to load logs. Please try again.</div>';
+            logsList.innerHTML = '<div class="loading-error">Failed to load logs. Please try again.</div>';
         });
 }
 
@@ -741,21 +918,16 @@ function renderLogsList(logs) {
     if (!logsList) return;
     
     if (logs.length === 0) {
-        logsList.innerHTML = '<div class="empty-logs">No logs available.</div>';
+        logsList.innerHTML = '<div class="empty-state">No logs available</div>';
         return;
     }
-    
-    // Sort logs by timestamp (newest first)
-    logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     
     let html = '';
     logs.forEach(log => {
         const logClass = `log-${log.level.toLowerCase()}`;
-        
         html += `
             <div class="log-item ${logClass}">
                 <div class="log-timestamp">${new Date(log.timestamp).toLocaleString()}</div>
-                <div class="log-level">${log.level}</div>
                 <div class="log-source">${log.source}</div>
                 <div class="log-message">${log.message}</div>
             </div>
@@ -765,7 +937,7 @@ function renderLogsList(logs) {
     logsList.innerHTML = html;
 }
 
-// Set up modal functionality
+// Function to set up all the modal functionality
 function setupModals() {
     // Get all modals
     const modals = document.querySelectorAll('.modal');
@@ -935,406 +1107,3 @@ document.addEventListener('DOMContentLoaded', function() {
         deleteChatBtn.addEventListener('click', deleteCurrentChat);
     }
 });
-
-function highlightIncident(element) {
-    // Remove highlight from other incidents
-    document.querySelectorAll('.incident-item').forEach(item => {
-        item.style.backgroundColor = 'white';
-    });
-    // Highlight clicked incident
-    element.style.backgroundColor = '#f0f0f0';
-}
-
-// Function to update incident status
-function updateIncidentStatus(incidentId, newStatus, comments = '') {
-    // Format the status value for the API (convert to title case)
-    let apiStatus = newStatus.replace(/-/g, ' ').replace(/\w\S*/g, 
-        function(txt) {
-            return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-        }
-    );
-    
-    // Prepare request data
-    const requestData = {
-        status: apiStatus
-    };
-    
-    // Add comments if provided
-    if (comments) {
-        requestData.comments = comments;
-    }
-    
-    // Send PUT request to update incident
-    fetch(`/api/incidents/${incidentId}/`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCSRFToken()
-        },
-        body: JSON.stringify(requestData)
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Failed to update incident status');
-        }
-        return response.json();
-    })
-    .then(updatedIncident => {
-        // Update the UI with the new incident data
-        showIncidentDetails(updatedIncident);
-        
-        // Also update the incident in the list
-        updateIncidentInList(updatedIncident);
-        
-        // Show success message
-        const detailsContainer = document.getElementById('incident-details');
-        const successMsg = document.createElement('div');
-        successMsg.className = 'status-update-success';
-        successMsg.textContent = `Status updated to ${apiStatus}`;
-        successMsg.style.color = 'green';
-        successMsg.style.marginTop = '10px';
-        detailsContainer.appendChild(successMsg);
-        
-        // Remove success message after 3 seconds
-        setTimeout(() => {
-            if (successMsg.parentNode) {
-                successMsg.parentNode.removeChild(successMsg);
-            }
-        }, 3000);
-        
-        // Reload the incidents list to reflect the updates
-        loadIncidents();
-    })
-    .catch(error => {
-        console.error('Error updating incident status:', error);
-        // Show error message
-        const detailsContainer = document.getElementById('incident-details');
-        const errorMsg = document.createElement('div');
-        errorMsg.className = 'status-update-error';
-        errorMsg.textContent = 'Failed to update status. Please try again.';
-        errorMsg.style.color = 'red';
-        errorMsg.style.marginTop = '10px';
-        detailsContainer.appendChild(errorMsg);
-        
-        // Remove error message after 3 seconds
-        setTimeout(() => {
-            if (errorMsg.parentNode) {
-                errorMsg.parentNode.removeChild(errorMsg);
-            }
-        }, 3000);
-    });
-}
-
-// Function to update a single incident in the list
-function updateIncidentInList(updatedIncident) {
-    const incidentElement = document.querySelector(`.incident-item[data-id="${updatedIncident.id}"]`);
-    if (incidentElement) {
-        const statusElement = incidentElement.querySelector('.incident-status');
-        if (statusElement) {
-            // Update the status class and text
-            const oldStatusClass = statusElement.className.split(' ')[1];
-            const newStatusClass = updatedIncident.status.toLowerCase().replace(' ', '-');
-            statusElement.classList.remove(oldStatusClass);
-            statusElement.classList.add(newStatusClass);
-            statusElement.textContent = updatedIncident.status;
-        }
-    }
-}
-
-function updateIncidentsSummary(incidents) {
-    const summaryContainer = document.getElementById('incident-summary');
-    if (!summaryContainer) return;
-    
-    // Count incidents by status and severity
-    let openIncidents = incidents.filter(inc => inc.status === 'open').length;
-    let inProgressIncidents = incidents.filter(inc => inc.status === 'in-progress').length;
-    let resolvedIncidents = incidents.filter(inc => inc.status === 'resolved').length;
-    let highSeverityIncidents = incidents.filter(inc => inc.severity === 'high').length;
-    
-    // Create the HTML for the incident summary section
-    let summaryHTML = `
-        <h3>Incidents Overview</h3>
-        <div class="summary-content">
-            <div class="summary-stats">
-                <div class="severity-item high">
-                    <span>High Severity</span>
-                    <span>${highSeverityIncidents}</span>
-                </div>
-                <div class="severity-item">
-                    <span>Open</span>
-                    <span>${openIncidents}</span>
-                </div>
-                <div class="severity-item">
-                    <span>In Progress</span>
-                    <span>${inProgressIncidents}</span>
-                </div>
-                <div class="severity-item">
-                    <span>Resolved</span>
-                    <span>${resolvedIncidents}</span>
-                </div>
-            </div>
-            
-            <div class="summary-note">
-                <p>Select an incident for details</p>
-            </div>
-        </div>
-    `;
-    
-    // Update the summary container with our HTML
-    summaryContainer.innerHTML = summaryHTML;
-}
-
-// Update loadIncidents function to include summary
-function loadIncidents() {
-    const incidentsList = document.getElementById('incidents-list');
-    if (!incidentsList) return;
-    
-    fetch('/api/incidents/')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(incidents => {
-            renderIncidentsList(incidents);
-            updateIncidentsSummary(incidents);
-        })
-        .catch(error => {
-            console.error('Error loading incidents:', error);
-            incidentsList.innerHTML = '<div class="loading-incidents">Failed to load incidents. Please try again.</div>';
-        });
-}
-
-// Function to load automations for the recommendations column
-function loadAutomations() {
-    const automationsList = document.getElementById('automations-list');
-    if (!automationsList) return;
-    
-    fetch('/api/automations/')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(automations => {
-            renderAutomationsList(automations);
-        })
-        .catch(error => {
-            console.error('Error loading automations:', error);
-            automationsList.innerHTML = '<div class="loading-automations">Failed to load automations. Please try again.</div>';
-        });
-}
-
-// Function to update recommended automations based on incident selection
-function updateRecommendedAutomations(automations) {
-    const automationsList = document.getElementById('automations-list');
-    if (!automationsList) return;
-    
-    // If no recommended automations, show message
-    if (!automations || automations.length === 0) {
-        automationsList.innerHTML = '<div class="empty-state">No relevant automations found for this incident</div>';
-        return;
-    }
-    
-    let html = '<h4>Recommended Automations</h4>';
-    automations.forEach(automation => {
-        html += `
-            <div class="automation-item recommended" data-id="${automation.id}">
-                <div class="automation-name">${automation.name}</div>
-                <div class="automation-description">${automation.description}</div>
-                <button class="run-btn" data-id="${automation.id}">Run</button>
-            </div>
-        `;
-    });
-    
-    automationsList.innerHTML = html;
-    
-    // Add event listeners to run buttons
-    document.querySelectorAll('.automation-item .run-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const automationId = this.dataset.id;
-            triggerAutomation(automationId);
-        });
-    });
-}
-
-// Function to render the automations list
-function renderAutomationsList(automations) {
-    const automationsList = document.getElementById('automations-list');
-    if (!automationsList) return;
-    
-    if (automations.length === 0) {
-        automationsList.innerHTML = '<div class="empty-state">No automations available</div>';
-        return;
-    }
-    
-    let html = '';
-    automations.forEach(automation => {
-        html += `
-            <div class="automation-item" data-id="${automation.id}">
-                <div class="automation-name">${automation.name}</div>
-                <div class="automation-description">${automation.description}</div>
-                <button class="run-btn" data-id="${automation.id}">Run</button>
-            </div>
-        `;
-    });
-    
-    automationsList.innerHTML = html;
-    
-    // Add event listeners to run buttons
-    document.querySelectorAll('.automation-item .run-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const automationId = this.dataset.id;
-            triggerAutomation(automationId);
-        });
-    });
-}
-
-// Function to trigger an automation
-function triggerAutomation(automationId) {
-    fetch(`/api/automations/${automationId}/trigger/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCSRFToken()
-        },
-        body: JSON.stringify({})
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Failed to trigger automation');
-        }
-        return response.json();
-    })
-    .then(data => {
-        alert(`Automation triggered successfully: ${data.message || 'Completed'}`);
-    })
-    .catch(error => {
-        console.error('Error triggering automation:', error);
-        alert('Failed to trigger automation. Please try again.');
-    });
-}
-
-// Function to load dashboards for the recommendations column
-function loadDashboards() {
-    const dashboardsList = document.getElementById('dashboards-list');
-    if (!dashboardsList) return;
-    
-    fetch('/api/dashboards/')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(dashboards => {
-            renderDashboardsList(dashboards);
-        })
-        .catch(error => {
-            console.error('Error loading dashboards:', error);
-            dashboardsList.innerHTML = '<div class="loading-dashboards">Failed to load dashboards. Please try again.</div>';
-        });
-}
-
-// Function to update recommended dashboards based on incident selection
-function updateRecommendedDashboards(dashboards) {
-    const dashboardsList = document.getElementById('dashboards-list');
-    if (!dashboardsList) return;
-    
-    // If no recommended dashboards, show message
-    if (!dashboards || dashboards.length === 0) {
-        dashboardsList.innerHTML = '<div class="empty-state">No relevant dashboards found for this incident</div>';
-        return;
-    }
-    
-    let html = '<h4>Recommended Dashboards</h4>';
-    dashboards.forEach(dashboard => {
-        html += `
-            <div class="dashboard-item recommended">
-                <div class="dashboard-name">${dashboard.name}</div>
-                <div class="dashboard-description">${dashboard.description}</div>
-                <a href="${dashboard.link}" target="_blank" class="dashboard-link">Open Dashboard <i data-feather="external-link"></i></a>
-            </div>
-        `;
-    });
-    
-    dashboardsList.innerHTML = html;
-    
-    // Initialize feather icons
-    feather.replace();
-}
-
-// Function to render the dashboards list
-function renderDashboardsList(dashboards) {
-    const dashboardsList = document.getElementById('dashboards-list');
-    if (!dashboardsList) return;
-    
-    if (dashboards.length === 0) {
-        dashboardsList.innerHTML = '<div class="empty-state">No dashboards available</div>';
-        return;
-    }
-    
-    let html = '';
-    dashboards.forEach(dashboard => {
-        html += `
-            <div class="dashboard-item">
-                <div class="dashboard-name">${dashboard.name}</div>
-                <div class="dashboard-description">${dashboard.description}</div>
-                <a href="${dashboard.link}" target="_blank" class="dashboard-link">Open Dashboard <i data-feather="external-link"></i></a>
-            </div>
-        `;
-    });
-    
-    dashboardsList.innerHTML = html;
-    
-    // Initialize feather icons
-    feather.replace();
-}
-
-// Function to load logs for the recommendations column
-function loadLogs() {
-    const logsList = document.getElementById('logs-list');
-    if (!logsList) return;
-    
-    fetch('/api/logs/')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(logs => {
-            renderLogsList(logs);
-        })
-        .catch(error => {
-            console.error('Error loading logs:', error);
-            logsList.innerHTML = '<div class="loading-logs">Failed to load logs. Please try again.</div>';
-        });
-}
-
-// Function to render the logs list
-function renderLogsList(logs) {
-    const logsList = document.getElementById('logs-list');
-    if (!logsList) return;
-    
-    if (logs.length === 0) {
-        logsList.innerHTML = '<div class="empty-state">No logs available</div>';
-        return;
-    }
-    
-    let html = '';
-    logs.forEach(log => {
-        const logClass = `log-${log.level.toLowerCase()}`;
-        html += `
-            <div class="log-item ${logClass}">
-                <div class="log-timestamp">${new Date(log.timestamp).toLocaleString()}</div>
-                <div class="log-source">${log.source}</div>
-                <div class="log-message">${log.message}</div>
-            </div>
-        `;
-    });
-    
-    logsList.innerHTML = html;
-}
