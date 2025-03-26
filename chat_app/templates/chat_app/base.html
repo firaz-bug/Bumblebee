@@ -479,6 +479,21 @@
                                 <div class="loading-documents">Loading documents...</div>
                             </div>
                         </div>
+                        
+                        <!-- Knowledge Base section -->
+                        <div class="knowledge-base-container">
+                            <div class="sidebar-header">
+                                <h3>Knowledge Base</h3>
+                                <button id="create-kb-btn" class="action-btn" title="Create new entry">
+                                    <i data-feather="plus"></i> Add Entry
+                                </button>
+                            </div>
+                            <div id="knowledge-base-list" class="knowledge-base-list">
+                                <!-- Knowledge base entries will be loaded here -->
+                                <div class="loading-kb">Loading knowledge base...</div>
+                            </div>
+                        </div>
+                        
                         <div class="sidebar-footer">
                             <button id="upload-document-btn" class="upload-btn">
                                 <i data-feather="upload"></i> Upload Document
@@ -527,6 +542,49 @@
                 </form>
             </div>
         </div>
+        
+        <!-- Knowledge Base Entry Form Modal -->
+        <div id="kb-modal" class="modal">
+            <div class="modal-content">
+                <span id="kb-modal-close" class="modal-close">&times;</span>
+                <h2 id="kb-modal-title">Create Knowledge Base Entry</h2>
+                <form id="kb-form" data-mode="create">
+                    <div class="form-group">
+                        <label for="kb-title-input">Title</label>
+                        <input type="text" id="kb-title-input" name="title" placeholder="Enter a title..." required>
+                    </div>
+                    <div class="form-group">
+                        <label for="kb-category-input">Category</label>
+                        <input type="text" id="kb-category-input" name="category" placeholder="Enter a category (optional)">
+                    </div>
+                    <div class="form-group">
+                        <label for="kb-content-input">Content</label>
+                        <textarea id="kb-content-input" name="content" rows="8" placeholder="Enter knowledge base content..." required></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn primary-btn">Save</button>
+                        <button type="button" class="btn secondary-btn modal-close-btn">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Knowledge Base View Modal -->
+        <div id="kb-view-modal" class="modal">
+            <div class="modal-content">
+                <span id="kb-view-modal-close" class="modal-close">&times;</span>
+                <div class="kb-view-header">
+                    <h2 id="kb-view-title">Knowledge Base Entry</h2>
+                    <div class="kb-view-category">Category: <span id="kb-view-category">Uncategorized</span></div>
+                </div>
+                <div class="kb-view-content-wrapper">
+                    <div id="kb-view-content" class="kb-view-content"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="kb-overlay" class="modal-overlay"></div>
+        <div id="kb-view-overlay" class="modal-overlay"></div>
     </div>
 
     <script>
