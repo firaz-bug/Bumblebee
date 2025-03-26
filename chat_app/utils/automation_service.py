@@ -381,7 +381,7 @@ class AutomationService:
                         "to": to,
                         "subject": subject,
                         "body_preview": body[:50] + "..." if len(body) > 50 else body,
-                        "timestamp": datetime.datetime.now().isoformat()
+                        "timestamp": datetime.now().isoformat()
                     }
                 }
             
@@ -408,7 +408,7 @@ class AutomationService:
                         "description": description,
                         "due_date": due_date,
                         "priority": priority,
-                        "created_at": datetime.datetime.now().isoformat()
+                        "created_at": datetime.now().isoformat()
                     }
                 }
             
@@ -430,7 +430,7 @@ class AutomationService:
                     "raw_response": {
                         "service": service_name,
                         "action": "restart",
-                        "timestamp": datetime.datetime.now().isoformat(),
+                        "timestamp": datetime.now().isoformat(),
                         "status": "completed"
                     }
                 }
