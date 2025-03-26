@@ -27,6 +27,7 @@ class VectorStore:
         self.documents_info_path = os.path.join(persist_directory, 'documents_info.json')
         self.automations_info_path = os.path.join(persist_directory, 'automations_info.json')
         self.dashboards_info_path = os.path.join(persist_directory, 'dashboards_info.json')
+        self.knowledge_base_info_path = os.path.join(persist_directory, 'knowledge_base_info.json')
         self.initialized = False
         # This will be set from the outside by views.py
         self.openai_service = None
@@ -89,6 +90,24 @@ class VectorStore:
                 with open(self.dashboards_info_path, 'w') as f:
                     json.dump(self.dashboards_info, f)
                     
+            # Initialize in-memory document and knowledge base store
+            self.knowledge_base_by_id = {}
+            self.knowledge_base_texts = []
+            self.knowledge_base_info = {}
+            
+            # Load knowledge base info if it exists
+            if os.path.exists(self.knowledge_base_info_path):
+                with open(self.knowledge_base_info_path, 'r') as f:
+                    self.knowledge_base_info = json.load(f)
+                    
+                kb_count = len(self.knowledge_base_info)
+                logger.info(f"Loaded {kb_count} knowledge base entries info from disk")
+            else:
+                self.knowledge_base_info = {}
+                # Save empty knowledge base info
+                with open(self.knowledge_base_info_path, 'w') as f:
+                    json.dump(self.knowledge_base_info, f)
+            
             # Initialize in-memory document store
             self.initialized = True
             logger.info("Using simple in-memory vector store for demonstration")
@@ -435,6 +454,7 @@ class VectorStore:
             Document = apps.get_model('chat_app', 'Document')
             Automation = apps.get_model('chat_app', 'Automation')
             Dashboard = apps.get_model('chat_app', 'Dashboard')
+            KnowledgeBase = apps.get_model('chat_app', 'KnowledgeBase')
             
             # Get all documents from database
             documents = Document.objects.all()
@@ -500,8 +520,33 @@ class VectorStore:
                     }
                     self.dashboard_texts.append(dashboard.description)
             
+            # Load all knowledge base entries from database
+            knowledge_base_entries = KnowledgeBase.objects.all()
+            kb_count = knowledge_base_entries.count()
+            logger.info(f"Loading {kb_count} knowledge base entries from database into vector store")
+            
+            # Add each knowledge base entry to the vector store
+            for kb_entry in knowledge_base_entries:
+                # Only add if not already in knowledge_base_info
+                if str(kb_entry.id) not in self.knowledge_base_info:
+                    logger.info(f"Adding knowledge base entry '{kb_entry.title}' to vector store")
+                    self.add_knowledge_base_entry(str(kb_entry.id), kb_entry.title, kb_entry.content, kb_entry.category)
+                else:
+                    # Knowledge base entry info exists, but we need to reload it into memory
+                    logger.info(f"Knowledge base entry '{kb_entry.title}' already in vector store")
+                    # Add to knowledge_base_by_id for in-memory lookup
+                    self.knowledge_base_by_id[str(kb_entry.id)] = {
+                        "content": kb_entry.content,
+                        "metadata": {
+                            "kb_id": str(kb_entry.id),
+                            "title": kb_entry.title,
+                            "category": kb_entry.category
+                        }
+                    }
+                    self.knowledge_base_texts.append(kb_entry.content)
+            
             # Log summary
-            logger.info(f"Loaded {len(self.documents_by_id)} document chunks, {len(self.automations_by_id)} automations, and {len(self.dashboards_by_id)} dashboards into vector store")
+            logger.info(f"Loaded {len(self.documents_by_id)} document chunks, {len(self.automations_by_id)} automations, {len(self.dashboards_by_id)} dashboards, and {len(self.knowledge_base_by_id)} knowledge base entries into vector store")
             
         except Exception as e:
             logger.error(f"Error loading documents from database: {str(e)}")
@@ -703,6 +748,103 @@ class VectorStore:
         except Exception as e:
             logger.error(f"Error recommending dashboards: {str(e)}")
             return []
+            
+    def add_knowledge_base_entry(self, kb_id, title, content, category=""):
+        """
+        Add a knowledge base entry to the vector store.
+        
+        Args:
+            kb_id: ID of the knowledge base entry in the database
+            title: Entry title
+            content: Text content of the entry
+            category: Category of the entry
+            
+        Returns:
+            str: Vector store ID for the knowledge base entry
+        """
+        if not self.initialized:
+            self._initialize_vector_store()
+            if not self.initialized:
+                raise Exception("Vector store initialization failed")
+        
+        try:
+            # For our simplified implementation, just store the knowledge base entry in memory
+            # Split content into chunks if it's too long
+            chunks = self._chunk_text(content)
+            
+            vector_ids = []
+            for i, chunk in enumerate(chunks):
+                # Generate a unique ID for this chunk
+                chunk_id = f"{kb_id}_{i}"
+                vector_ids.append(chunk_id)
+                
+                # Store chunk in memory
+                self.knowledge_base_by_id[chunk_id] = {
+                    "content": chunk,
+                    "metadata": {
+                        "kb_id": str(kb_id),
+                        "title": title,
+                        "category": category,
+                        "chunk": i
+                    }
+                }
+                self.knowledge_base_texts.append(chunk)
+            
+            # Save knowledge base info
+            self.knowledge_base_info[str(kb_id)] = {
+                "title": title,
+                "category": category,
+                "vector_ids": vector_ids,
+                "chunks": len(chunks)
+            }
+            
+            with open(self.knowledge_base_info_path, 'w') as f:
+                json.dump(self.knowledge_base_info, f)
+                
+            return str(kb_id)
+            
+        except Exception as e:
+            logger.error(f"Error adding knowledge base entry to vector store: {str(e)}")
+            raise
+    
+    def delete_knowledge_base_entry(self, kb_id):
+        """
+        Delete a knowledge base entry from the vector store.
+        
+        Args:
+            kb_id: ID of the knowledge base entry to delete
+        """
+        if not self.initialized:
+            self._initialize_vector_store()
+            if not self.initialized:
+                return
+            
+        try:
+            kb_id = str(kb_id)
+            logger.info(f"Deleting knowledge base entry {kb_id} from vector store")
+            
+            # Clear knowledge base entry chunks from memory
+            chunk_ids_to_remove = []
+            for chunk_id, entry in self.knowledge_base_by_id.items():
+                if entry["metadata"]["kb_id"] == kb_id:
+                    chunk_ids_to_remove.append(chunk_id)
+                    if entry["content"] in self.knowledge_base_texts:
+                        self.knowledge_base_texts.remove(entry["content"])
+            
+            for chunk_id in chunk_ids_to_remove:
+                del self.knowledge_base_by_id[chunk_id]
+            
+            # Remove from knowledge_base_info and save
+            if kb_id in self.knowledge_base_info:
+                del self.knowledge_base_info[kb_id]
+                os.makedirs(os.path.dirname(self.knowledge_base_info_path), exist_ok=True)
+                with open(self.knowledge_base_info_path, 'w') as f:
+                    json.dump(self.knowledge_base_info, f)
+                    
+            logger.info(f"Successfully deleted knowledge base entry {kb_id} and {len(chunk_ids_to_remove)} chunks")
+                    
+        except Exception as e:
+            logger.error(f"Error deleting knowledge base entry from vector store: {str(e)}")
             
     def _chunk_text(self, text, chunk_size=1000, overlap=100):
         """
