@@ -236,7 +236,7 @@ class AutomationService:
         
         return f"**{automation.name}** execution result:\n\n{execution_result}"
     
-    def execute_automation(self, endpoint, param_schema, params):
+    def execute_automation(self, endpoint, param_schema, params, call_type='POST'):
         """
         Execute an automation by calling the specified endpoint.
         
@@ -244,6 +244,7 @@ class AutomationService:
             endpoint: API endpoint for the automation
             param_schema: Parameter schema with descriptions
             params: Actual parameters to use
+            call_type: HTTP method to use for the call (GET or POST)
             
         Returns:
             str: Result of the automation execution
@@ -252,6 +253,10 @@ class AutomationService:
             # This is a mock implementation for demonstration
             # In a real application, this would make actual API calls
             
+            # Log the execution attempt
+            logger.info(f"Executing automation with endpoint: {endpoint}, call_type: {call_type}")
+            logger.info(f"Parameters: {params}")
+            
             # For external endpoints (starting with http)
             if endpoint.startswith(('http://', 'https://')):
                 # For weather API as an example
@@ -259,7 +264,7 @@ class AutomationService:
                     # Get API key from environment
                     api_key = params.get('appid') or os.getenv('OPENWEATHER_API_KEY', 'demo_key')
                     
-                    # Make actual API call
+                    # Make actual API call - always use GET for weather API
                     response = requests.get(endpoint, params={
                         'q': params.get('q', 'London'),
                         'appid': api_key,
@@ -272,16 +277,47 @@ class AutomationService:
                         temp = data.get('main', {}).get('temp', 'unknown')
                         location = data.get('name', params.get('q', 'unknown location'))
                         
-                        return f"Weather in {location}: {weather}, Temperature: {temp}°C"
+                        return {
+                            "status": "success",
+                            "message": f"Weather in {location}: {weather}, Temperature: {temp}°C",
+                            "raw_response": data
+                        }
                     else:
-                        return f"Weather API returned an error: {response.status_code} - {response.text}"
+                        return {
+                            "status": "error",
+                            "message": f"Weather API returned an error: {response.status_code}",
+                            "raw_response": response.text
+                        }
                 
                 # Generic external API call
                 try:
-                    response = requests.post(endpoint, json=params)
-                    return f"API response (status {response.status_code}):\n{response.text}"
+                    if call_type.upper() == 'GET':
+                        response = requests.get(endpoint, params=params)
+                    else:  # Default to POST
+                        response = requests.post(endpoint, json=params)
+                    
+                    # Try to parse JSON response
+                    try:
+                        json_data = response.json()
+                        return {
+                            "status": "success" if response.status_code < 400 else "error",
+                            "message": f"API response (status {response.status_code})",
+                            "raw_response": json_data
+                        }
+                    except ValueError:
+                        # Not a JSON response
+                        return {
+                            "status": "success" if response.status_code < 400 else "error",
+                            "message": f"API response (status {response.status_code})",
+                            "raw_response": response.text
+                        }
                 except Exception as e:
-                    return f"Failed to call external API: {str(e)}"
+                    logger.error(f"Failed to call external API: {str(e)}")
+                    return {
+                        "status": "error",
+                        "message": f"Failed to call external API: {str(e)}",
+                        "raw_response": None
+                    }
             
             # For internal endpoints
             if endpoint == "/api/send_email":
@@ -290,10 +326,23 @@ class AutomationService:
                 body = params.get('body', '')
                 
                 if not all([to, subject, body]):
-                    return "Missing required parameters for sending email."
+                    return {
+                        "status": "error",
+                        "message": "Missing required parameters for sending email.",
+                        "raw_response": None
+                    }
                 
                 # In a real app, this would call an email sending service
-                return f"Email would be sent to {to} with subject '{subject}'"
+                return {
+                    "status": "success",
+                    "message": f"Email would be sent to {to} with subject '{subject}'",
+                    "raw_response": {
+                        "to": to,
+                        "subject": subject,
+                        "body_preview": body[:50] + "..." if len(body) > 50 else body,
+                        "timestamp": datetime.datetime.now().isoformat()
+                    }
+                }
             
             elif endpoint == "/api/create_task":
                 title = params.get('title', '')
@@ -302,14 +351,60 @@ class AutomationService:
                 priority = params.get('priority', 'medium')
                 
                 if not title:
-                    return "Missing required title parameter for creating task."
+                    return {
+                        "status": "error",
+                        "message": "Missing required title parameter for creating task.",
+                        "raw_response": None
+                    }
                 
                 # In a real app, this would create a task in a task management system
-                return f"Task '{title}' would be created with priority '{priority}' and due date '{due_date}'"
+                return {
+                    "status": "success",
+                    "message": f"Task '{title}' would be created with priority '{priority}' and due date '{due_date}'",
+                    "raw_response": {
+                        "task_id": str(uuid.uuid4()),
+                        "title": title,
+                        "description": description,
+                        "due_date": due_date,
+                        "priority": priority,
+                        "created_at": datetime.datetime.now().isoformat()
+                    }
+                }
+            
+            # System maintenance endpoints
+            elif endpoint == "/api/restart_service":
+                service_name = params.get('service_name', '')
+                
+                if not service_name:
+                    return {
+                        "status": "error",
+                        "message": "Missing required service_name parameter.",
+                        "raw_response": None
+                    }
+                
+                # In a real app, this would restart a system service
+                return {
+                    "status": "success",
+                    "message": f"Service '{service_name}' would be restarted",
+                    "raw_response": {
+                        "service": service_name,
+                        "action": "restart",
+                        "timestamp": datetime.datetime.now().isoformat(),
+                        "status": "completed"
+                    }
+                }
             
             # Unknown internal endpoint
-            return f"Unknown internal endpoint: {endpoint}"
+            return {
+                "status": "error",
+                "message": f"Unknown internal endpoint: {endpoint}",
+                "raw_response": None
+            }
             
         except Exception as e:
             logger.error(f"Error executing automation: {str(e)}")
-            return f"Error executing automation: {str(e)}"
+            return {
+                "status": "error",
+                "message": f"Error executing automation: {str(e)}",
+                "raw_response": None
+            }
