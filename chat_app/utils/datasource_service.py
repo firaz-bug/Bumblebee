@@ -157,17 +157,19 @@ class DataSourceService:
         Returns:
             str: Data source description and parameter guidance or query result
         """
-        # Check if message contains a proper request with parameters
-        contains_parameters = any(param in message for param in datasource.parameters.keys())
+        # Check if message contains explicit parameters
+        contains_explicit_parameters = any(f"{param}=" in message for param in datasource.parameters.keys())
         
-        if not contains_parameters:
-            # Just describe the data source
+        # Always attempt to execute the query, even without parameters
+        # But first check if the user is just asking for information about the data source
+        if "help" in message.lower() or "info" in message.lower() or "describe" in message.lower() or "?" in message:
+            # Just describe the data source without executing
             response = f"**{datasource.name}**\n{datasource.description}\n\nParameters:\n"
             
             for param, description in datasource.parameters.items():
                 response += f"- {param}: {description}\n"
             
-            response += "\nTo query this data source, provide the required parameters. For example:\n"
+            response += "\nTo query this data source, you can provide parameters. For example:\n"
             example_params = {}
             for param, desc in datasource.parameters.items():
                 if "Required" in desc:

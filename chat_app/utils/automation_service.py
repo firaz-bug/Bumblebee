@@ -173,17 +173,19 @@ class AutomationService:
         Returns:
             str: Automation description and parameter guidance or execution result
         """
-        # Check if message contains a proper request with parameters
-        contains_parameters = any(param in message for param in automation.parameters.keys())
+        # Check if message contains explicit parameters
+        contains_explicit_parameters = any(f"{param}=" in message for param in automation.parameters.keys())
         
-        if not contains_parameters:
-            # Just describe the automation
+        # Always attempt to execute the automation, even without parameters
+        # But first check if the user is just asking for information about the automation
+        if "help" in message.lower() or "info" in message.lower() or "describe" in message.lower() or "?" in message:
+            # Just describe the automation without executing
             response = f"**{automation.name}**\n{automation.description}\n\nParameters:\n"
             
             for param, description in automation.parameters.items():
                 response += f"- {param}: {description}\n"
             
-            response += "\nTo execute this automation, provide the required parameters. For example:\n"
+            response += "\nTo execute this automation, you can provide parameters. For example:\n"
             example_params = {}
             for param, desc in automation.parameters.items():
                 if "Required" in desc:
