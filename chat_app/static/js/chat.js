@@ -595,13 +595,20 @@ function showIncidentDetails(incident) {
         `;
     }
 
+    // Add "Add Comments" button
+    html += `
+        <div class="incident-actions">
+            <button id="add-comments-btn" class="btn">Add Comments</button>
+        </div>
+    `;
+
     detailsContainer.innerHTML = html;
 
-    // Add event listener for the status dropdown
-    const statusDropdown = document.getElementById('incident-status');
-    if (statusDropdown) {
-        statusDropdown.addEventListener('change', function() {
-            showStatusUpdateModal(incident.id, this.value);
+    // Add event listener for the Add Comments button
+    const addCommentsBtn = document.getElementById('add-comments-btn');
+    if (addCommentsBtn) {
+        addCommentsBtn.addEventListener('click', function() {
+            showStatusUpdateModal(incident.id, 'add-comments');
         });
     }
 
@@ -670,8 +677,7 @@ function showStatusUpdateModal(incidentId, newStatus) {
         // Update modal title
         const modalTitle = modal.querySelector('.modal-title');
         if (modalTitle) {
-            const statusText = newStatus.replace('-', ' ');
-            modalTitle.textContent = `Update Status to ${statusText.charAt(0).toUpperCase() + statusText.slice(1)}`;
+            modalTitle.textContent = `Add Comments to Incident`;
         }
     }
 }
