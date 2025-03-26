@@ -1337,43 +1337,24 @@ function renderKnowledgeBaseList(entries) {
         knowledgeBaseList.innerHTML = '<div class="empty-state">No knowledge base entries available</div>';
         return;
     }
-    
-    // Group entries by category
-    const categorizedEntries = {};
-    entries.forEach(entry => {
-        const category = entry.category || 'Uncategorized';
-        if (!categorizedEntries[category]) {
-            categorizedEntries[category] = [];
-        }
-        categorizedEntries[category].push(entry);
-    });
-    
+
     let html = '';
-    
-    // Generate HTML for each category
-    Object.keys(categorizedEntries).sort().forEach(category => {
-        html += `<div class="kb-category">
-            <h4>${category}</h4>
-            <div class="kb-entries">`;
-        
-        categorizedEntries[category].forEach(entry => {
-            html += `<div class="kb-entry" data-id="${entry.id}">
-                <div class="kb-entry-header">
-                    <h5 class="kb-entry-title">${entry.title}</h5>
-                    <div class="kb-entry-actions">
-                        <button class="kb-edit-btn icon-btn" data-id="${entry.id}" title="Edit entry">
-                            <i data-feather="edit-2"></i>
-                        </button>
-                        <button class="kb-delete-btn icon-btn" data-id="${entry.id}" title="Delete entry">
-                            <i data-feather="trash-2"></i>
-                        </button>
-                    </div>
+    entries.forEach(entry => {
+        html += `<div class="kb-entry" data-id="${entry.id}">
+            <div class="kb-entry-header">
+                <h5 class="kb-entry-title">${entry.title}</h5>
+                <div class="kb-entry-actions">
+                    <button class="kb-edit-btn icon-btn" data-id="${entry.id}" title="Edit entry">
+                        <i data-feather="edit-2"></i>
+                    </button>
+                    <button class="kb-delete-btn icon-btn" data-id="${entry.id}" title="Delete entry">
+                        <i data-feather="trash-2"></i>
+                    </button>
                 </div>
-                <div class="kb-entry-preview">${entry.content.substring(0, 100)}${entry.content.length > 100 ? '...' : ''}</div>
-            </div>`;
-        });
-        
-        html += `</div></div>`;
+            </div>
+            <div class="kb-entry-category">Category: ${entry.category || 'Uncategorized'}</div>
+            <div class="kb-entry-preview">${entry.content}</div>
+        </div>`;
     });
     
     knowledgeBaseList.innerHTML = html;

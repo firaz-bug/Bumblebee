@@ -1424,12 +1424,32 @@ html, body {
     border: 1px solid var(--color-border);
     border-radius: 8px;
     max-height: 80vh;
-    width: 80%;
-    max-width: 800px;
+    width: 90%;
+    max-width: 1000px;
     overflow-y: auto;
     z-index: 1000;
     display: none;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 1rem;
+}
+
+.kb-entry {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background-color: var(--color-bg);
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.kb-entry-preview {
+    font-size: 0.9rem;
+    color: var(--color-text);
+    line-height: 1.5;
+    white-space: pre-wrap;
 }
 
 .knowledge-base-header {
