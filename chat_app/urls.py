@@ -32,4 +32,8 @@ urlpatterns = [
     
     # Log endpoints
     path('api/logs/', views.logs, name='logs'),
+    
+    # Knowledge base endpoints
+    path('api/knowledge-base/', views.knowledge_base_entries, name='knowledge_base_entries'),
+    path('api/knowledge-base/<uuid:kb_id>/', views.knowledge_base_detail, name='knowledge_base_detail'),
 ]

@@ -6,9 +6,9 @@ from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Document, Conversation, Message, Automation, Incident, DataSource, Dashboard, Log
+from .models import Document, Conversation, Message, Automation, Incident, DataSource, Dashboard, Log, KnowledgeBase
 from .forms import DocumentUploadForm
-from .serializers import DocumentSerializer, ConversationSerializer, MessageSerializer, AutomationSerializer, IncidentSerializer, DataSourceSerializer, DashboardSerializer, LogSerializer
+from .serializers import DocumentSerializer, ConversationSerializer, MessageSerializer, AutomationSerializer, IncidentSerializer, DataSourceSerializer, DashboardSerializer, LogSerializer, KnowledgeBaseSerializer
 from .utils.document_processor import process_document
 from .utils.vector_store import VectorStore
 from .utils.llm_service import LLMService
@@ -559,3 +559,73 @@ def clear_documents(request):
     
     # Return success message
     return Response({"message": "All documents cleared from database and vector store."}, status=status.HTTP_200_OK)
+
+@api_view(['GET', 'POST'])
+def knowledge_base_entries(request):
+    """API endpoint for listing and creating knowledge base entries."""
+    if request.method == 'GET':
+        entries = KnowledgeBase.objects.all().order_by('-updated_at')
+        serializer = KnowledgeBaseSerializer(entries, many=True)
+        return Response(serializer.data)
+    
+    elif request.method == 'POST':
+        serializer = KnowledgeBaseSerializer(data=request.data)
+        if serializer.is_valid():
+            kb_entry = serializer.save()
+            
+            # Add to vector store
+            vector_id = vector_store.add_knowledge_base_entry(
+                str(kb_entry.id), 
+                kb_entry.title, 
+                kb_entry.content,
+                kb_entry.category
+            )
+            
+            # Update vector_id
+            kb_entry.vector_id = vector_id
+            kb_entry.save()
+            
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET', 'PUT', 'DELETE'])
+def knowledge_base_detail(request, kb_id):
+    """API endpoint for retrieving, updating and deleting knowledge base entries."""
+    try:
+        kb_entry = KnowledgeBase.objects.get(pk=kb_id)
+    except KnowledgeBase.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+    
+    if request.method == 'GET':
+        serializer = KnowledgeBaseSerializer(kb_entry)
+        return Response(serializer.data)
+    
+    elif request.method == 'PUT':
+        serializer = KnowledgeBaseSerializer(kb_entry, data=request.data)
+        if serializer.is_valid():
+            updated_entry = serializer.save()
+            
+            # Update in vector store
+            vector_id = vector_store.add_knowledge_base_entry(
+                str(updated_entry.id), 
+                updated_entry.title, 
+                updated_entry.content,
+                updated_entry.category
+            )
+            
+            # Update vector_id if changed
+            if updated_entry.vector_id != vector_id:
+                updated_entry.vector_id = vector_id
+                updated_entry.save()
+            
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    elif request.method == 'DELETE':
+        # Remove from vector store
+        vector_store.delete_knowledge_base_entry(str(kb_entry.id))
+        
+        # Delete the record
+        kb_entry.delete()
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)
