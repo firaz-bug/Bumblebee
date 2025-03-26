@@ -678,21 +678,15 @@ function showStatusUpdateModal(incidentId, newStatus) {
 
 // Function to update incident status
 function updateIncidentStatus(incidentId, newStatus, comments = '') {
-    // Format the status value for the API (convert to title case)
-    let apiStatus = newStatus.replace(/-/g, ' ').replace(/\w\S*/g, 
-        function(txt) {
-            return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-        }
-    );
-
-    // Prepare request data
-    const requestData = {
-        status: apiStatus
-    };
+    // Prepare request data - since we removed status, we just update comments
+    const requestData = {};
 
     // Add comments if provided
     if (comments) {
         requestData.comments = comments;
+    } else {
+        // If no comments provided, there's nothing to update
+        return;
     }
 
     // Send PUT request to update incident
@@ -721,7 +715,7 @@ function updateIncidentStatus(incidentId, newStatus, comments = '') {
         const detailsContainer = document.getElementById('incident-details');
         const successMsg = document.createElement('div');
         successMsg.className = 'status-update-success';
-        successMsg.textContent = `Status updated to ${apiStatus}`;
+        successMsg.textContent = `Comments added successfully`;
         successMsg.style.color = 'green';
         successMsg.style.marginTop = '10px';
         detailsContainer.appendChild(successMsg);
@@ -742,7 +736,7 @@ function updateIncidentStatus(incidentId, newStatus, comments = '') {
         const detailsContainer = document.getElementById('incident-details');
         const errorMsg = document.createElement('div');
         errorMsg.className = 'status-update-error';
-        errorMsg.textContent = 'Failed to update status. Please try again.';
+        errorMsg.textContent = 'Failed to add comments. Please try again.';
         errorMsg.style.color = 'red';
         errorMsg.style.marginTop = '10px';
         detailsContainer.appendChild(errorMsg);
@@ -760,14 +754,21 @@ function updateIncidentStatus(incidentId, newStatus, comments = '') {
 function updateIncidentInList(updatedIncident) {
     const incidentElement = document.querySelector(`.incident-item[data-id="${updatedIncident.id}"]`);
     if (incidentElement) {
-        const statusElement = incidentElement.querySelector('.incident-status');
-        if (statusElement) {
-            // Update the status class and text
-            const oldStatusClass = statusElement.className.split(' ')[1];
-            const newStatusClass = updatedIncident.status.toLowerCase().replace(' ', '-');
-            statusElement.classList.remove(oldStatusClass);
-            statusElement.classList.add(newStatusClass);
-            statusElement.textContent = updatedIncident.status;
+        const titleElement = incidentElement.querySelector('.incident-title');
+        if (titleElement) {
+            // Update incident title (number + short description)
+            titleElement.textContent = `${updatedIncident.incident_number}: ${updatedIncident.short_description}`;
+        }
+        
+        const priorityElement = incidentElement.querySelector('.incident-severity');
+        if (priorityElement) {
+            // Update the priority class and text if it changed
+            const oldPriorityClass = priorityElement.className.split(' ')[1];
+            if (oldPriorityClass !== updatedIncident.priority) {
+                priorityElement.classList.remove(oldPriorityClass);
+                priorityElement.classList.add(updatedIncident.priority);
+                priorityElement.textContent = updatedIncident.priority;
+            }
         }
     }
 }
@@ -777,11 +778,11 @@ function updateIncidentsSummary(incidents) {
     const summaryContainer = document.getElementById('incident-summary');
     if (!summaryContainer) return;
 
-    // Count incidents by status and severity
-    let openIncidents = incidents.filter(inc => inc.status.toLowerCase() === 'open').length;
-    let inProgressIncidents = incidents.filter(inc => inc.status.toLowerCase().replace(' ', '-') === 'in-progress').length;
-    let resolvedIncidents = incidents.filter(inc => inc.status.toLowerCase() === 'resolved').length;
-    let highSeverityIncidents = incidents.filter(inc => inc.severity.toLowerCase() === 'high').length;
+    // Count incidents by priority
+    let highPriorityIncidents = incidents.filter(inc => inc.priority && inc.priority.toLowerCase() === 'high').length;
+    let mediumPriorityIncidents = incidents.filter(inc => inc.priority && inc.priority.toLowerCase() === 'medium').length;
+    let lowPriorityIncidents = incidents.filter(inc => inc.priority && inc.priority.toLowerCase() === 'low').length;
+    let totalIncidents = incidents.length;
 
     // Create the HTML for the incident summary section
     let summaryHTML = `
@@ -789,20 +790,20 @@ function updateIncidentsSummary(incidents) {
         <div class="summary-content">
             <div class="summary-stats">
                 <div class="severity-item high">
-                    <span>High Severity</span>
-                    <span>${highSeverityIncidents}</span>
+                    <span>High Priority</span>
+                    <span>${highPriorityIncidents}</span>
+                </div>
+                <div class="severity-item medium">
+                    <span>Medium Priority</span>
+                    <span>${mediumPriorityIncidents}</span>
+                </div>
+                <div class="severity-item low">
+                    <span>Low Priority</span>
+                    <span>${lowPriorityIncidents}</span>
                 </div>
                 <div class="severity-item">
-                    <span>Open</span>
-                    <span>${openIncidents}</span>
-                </div>
-                <div class="severity-item">
-                    <span>In Progress</span>
-                    <span>${inProgressIncidents}</span>
-                </div>
-                <div class="severity-item">
-                    <span>Resolved</span>
-                    <span>${resolvedIncidents}</span>
+                    <span>Total</span>
+                    <span>${totalIncidents}</span>
                 </div>
             </div>
         </div>
