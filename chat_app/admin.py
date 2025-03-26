@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Document, Conversation, Message, Automation, Incident, DataSource, Dashboard, Log
+from .models import Document, Conversation, Message, Automation, Incident, DataSource, Dashboard, Log, KnowledgeBase
 
 @admin.register(DataSource)
 class DataSourceAdmin(admin.ModelAdmin):
@@ -47,3 +47,9 @@ class IncidentAdmin(admin.ModelAdmin):
     list_display = ('title', 'severity', 'status', 'created_at')
     search_fields = ('title', 'description')
     list_filter = ('severity', 'status', 'created_at')
+
+@admin.register(KnowledgeBase)
+class KnowledgeBaseAdmin(admin.ModelAdmin):
+    list_display = ('title', 'category', 'created_at', 'updated_at')
+    search_fields = ('title', 'content', 'category')
+    list_filter = ('category', 'created_at', 'updated_at')

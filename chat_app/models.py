@@ -136,3 +136,26 @@ class Log(models.Model):
     
     def __str__(self):
         return f"{self.level}: {self.message[:50]}..."
+
+class KnowledgeBase(models.Model):
+    """Model for knowledge base entries that are processed into the vector store."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=255)
+    content = models.TextField()
+    category = models.CharField(max_length=100, blank=True)
+    tags = models.JSONField(default=list, blank=True)
+    vector_id = models.CharField(max_length=100, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return self.title
+    
+    def delete(self, *args, **kwargs):
+        # Clear vector store cache
+        from .utils.vector_store import VectorStore
+        vector_store = VectorStore(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'vector_store'))
+        vector_store._initialize_vector_store()  # Ensure it's loaded
+        vector_store.delete_knowledge_base_entry(str(self.id))
+        
+        super().delete(*args, **kwargs)

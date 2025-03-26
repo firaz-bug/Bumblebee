@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Document, Conversation, Message, Automation, Incident, DataSource, Dashboard, Log
+from .models import Document, Conversation, Message, Automation, Incident, DataSource, Dashboard, Log, KnowledgeBase
 
 class DataSourceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -47,4 +47,10 @@ class IncidentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Incident
         fields = ['id', 'title', 'description', 'severity', 'status', 'comments', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+class KnowledgeBaseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = KnowledgeBase
+        fields = ['id', 'title', 'content', 'category', 'tags', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
