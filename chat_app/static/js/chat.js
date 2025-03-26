@@ -1047,9 +1047,8 @@ function triggerAutomation(automationId) {
 function showAutomationLogs(data) {
     const modal = document.getElementById('automation-logs-modal');
     const overlay = document.getElementById('automation-logs-overlay');
-    const logsContent = document.getElementById('automation-logs-content');
     
-    if (!modal || !logsContent) return;
+    if (!modal) return;
     
     // Format logs based on the structured response format
     const automationInfo = data.automation || {};
@@ -1067,62 +1066,74 @@ function showAutomationLogs(data) {
     // Get current timestamp
     const timestamp = new Date().toLocaleString();
     
-    // Process logs from the response
-    const logs = data.logs || [];
-    let logsSection = '';
+    // Update automation header information
+    document.getElementById('automation-name').textContent = automationName;
+    document.getElementById('automation-timestamp').textContent = `Executed: ${timestamp}`;
+    document.getElementById('automation-description').textContent = automationDesc;
     
-    if (logs.length > 0) {
-        logsSection = '<div class="automation-execution-logs"><h4>Execution Logs:</h4>';
-        logs.forEach(log => {
-            const logTime = log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : '';
-            logsSection += `
-                <div class="log-item log-${log.level || 'info'}">
+    // Clear previous logs
+    const logsContainer = document.getElementById('execution-logs-container');
+    if (logsContainer) {
+        logsContainer.innerHTML = '';
+        
+        // Process logs from the response
+        const logs = data.logs || [];
+        
+        if (logs.length > 0) {
+            logs.forEach(log => {
+                const logTime = log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+                const logLevel = log.level || 'info';
+                const logMessage = log.message || '';
+                
+                const logItem = document.createElement('div');
+                logItem.className = `log-item log-${logLevel}`;
+                logItem.innerHTML = `
                     <span class="log-time">${logTime}</span>
-                    <span class="log-level">${log.level || 'info'}</span>
-                    <span class="log-message">${log.message || ''}</span>
-                </div>
+                    <span class="log-level">${logLevel}</span>
+                    <span class="log-message">${logMessage}</span>
+                `;
+                logsContainer.appendChild(logItem);
+            });
+        } else {
+            // Add a default log message if no logs provided
+            const defaultLog = document.createElement('div');
+            defaultLog.className = 'log-item log-info';
+            defaultLog.innerHTML = `
+                <span class="log-time">${new Date().toLocaleTimeString()}</span>
+                <span class="log-level">info</span>
+                <span class="log-message">Automation execution triggered</span>
             `;
-        });
-        logsSection += '</div>';
+            logsContainer.appendChild(defaultLog);
+        }
     }
     
-    // Build the HTML content
-    let logsHtml = `
-        <div class="automation-log-header">
-            <h3>${automationName}</h3>
-            <div class="log-timestamp">Executed: ${timestamp}</div>
-            ${automationDesc ? `<div class="log-description">${automationDesc}</div>` : ''}
-        </div>
-        <div class="automation-log-details">
-            <div class="log-item"><strong>Status:</strong> <span class="status-${statusClass}">${resultStatus}</span></div>
-            <div class="log-item"><strong>Result:</strong> ${resultMessage}</div>
-        </div>
-        ${logsSection}
-    `;
+    // Update status display
+    const responseStatus = document.getElementById('response-status');
+    if (responseStatus) {
+        responseStatus.className = `status-${statusClass}`;
+        responseStatus.textContent = `(${resultStatus.toUpperCase()})`;
+    }
     
-    // Add raw response data if available
-    if (result.raw_response) {
-        let rawResponseData = '';
-        try {
-            // Try to prettify JSON if it's an object
-            if (typeof result.raw_response === 'object') {
-                rawResponseData = JSON.stringify(result.raw_response, null, 2);
-            } else {
+    // Update response data
+    const responseData = document.getElementById('api-response-data');
+    if (responseData) {
+        if (result.raw_response) {
+            let rawResponseData = '';
+            try {
+                // Try to prettify JSON if it's an object
+                if (typeof result.raw_response === 'object') {
+                    rawResponseData = JSON.stringify(result.raw_response, null, 2);
+                } else {
+                    rawResponseData = String(result.raw_response);
+                }
+            } catch (e) {
                 rawResponseData = String(result.raw_response);
             }
-        } catch (e) {
-            rawResponseData = String(result.raw_response);
+            responseData.textContent = rawResponseData;
+        } else {
+            responseData.textContent = resultMessage || 'No response data available';
         }
-        
-        logsHtml += `
-            <div class="automation-log-response">
-                <h4>Response Data:</h4>
-                <pre>${rawResponseData}</pre>
-            </div>
-        `;
     }
-    
-    logsContent.innerHTML = logsHtml;
     
     // Show the modal
     modal.style.display = 'block';

@@ -6,7 +6,7 @@ import os
 import requests
 import logging
 import uuid
-import datetime
+from datetime import datetime
 from django.conf import settings
 from ..models import Automation
 
@@ -233,12 +233,27 @@ class AutomationService:
                 response += f"- {param}: {automation.parameters[param]}\n"
             return response
         
-        # Execute the automation
-        execution_result = self.execute_automation(automation.endpoint, automation.parameters, params)
+        # Execute the automation with the correct call type
+        execution_result = self.execute_automation(
+            endpoint=automation.endpoint,
+            param_schema=automation.parameters,
+            params=params,
+            call_type=automation.call_type,  # Use the automation's call_type (GET/POST)
+            automation_info={
+                'name': automation.name,
+                'description': automation.description
+            }
+        )
         
-        return f"**{automation.name}** execution result:\n\n{execution_result}"
+        # Format the result for chat display
+        if isinstance(execution_result, dict) and 'message' in execution_result:
+            return f"**{automation.name}** execution result:\n\n{execution_result['message']}"
+        elif isinstance(execution_result, str):
+            return f"**{automation.name}** execution result:\n\n{execution_result}"
+        else:
+            return f"**{automation.name}** execution completed successfully."
     
-    def execute_automation(self, endpoint, param_schema, params, call_type='POST'):
+    def execute_automation(self, endpoint, param_schema, params, call_type='POST', automation_info=None):
         """
         Execute an automation by calling the specified endpoint.
         
@@ -247,17 +262,41 @@ class AutomationService:
             param_schema: Parameter schema with descriptions
             params: Actual parameters to use
             call_type: HTTP method to use for the call (GET or POST)
+            automation_info: Dict with information about the automation for logs
             
         Returns:
-            str: Result of the automation execution
+            dict: Structured result of the automation execution containing:
+                - status: 'success' or 'error'
+                - message: Human-readable message
+                - logs: List of log entries with timestamp, level, and message
+                - raw_response: Raw API response data if available
+                - automation: Information about the executed automation
         """
+        # Initialize result structure
+        result = {
+            'status': 'error',
+            'message': 'Failed to execute automation',
+            'logs': [],
+            'raw_response': None,
+            'automation': automation_info or {}
+        }
+        
+        # Add initial log entry
+        timestamp = datetime.now().isoformat()
+        result['logs'].append({
+            'timestamp': timestamp,
+            'level': 'info',
+            'message': f"Starting automation execution for endpoint: {endpoint}"
+        })
+        
         try:
-            # This is a mock implementation for demonstration
-            # In a real application, this would make actual API calls
-            
             # Log the execution attempt
             logger.info(f"Executing automation with endpoint: {endpoint}, call_type: {call_type}")
-            logger.info(f"Parameters: {params}")
+            result['logs'].append({
+                'timestamp': datetime.now().isoformat(),
+                'level': 'info',
+                'message': f"Call type: {call_type}, Parameters: {params}"
+            })
             
             # For external endpoints (starting with http)
             if endpoint.startswith(('http://', 'https://')):
