@@ -409,7 +409,15 @@ def incidents(request):
     elif request.method == 'POST':
         serializer = IncidentSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            incident = serializer.save()
+            
+            # Log incident creation
+            Log.objects.create(
+                message=f"New incident created: {incident.title} (Severity: {incident.severity})",
+                level="info",
+                source="api"
+            )
+            
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
