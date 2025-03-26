@@ -1416,9 +1416,37 @@ html, body {
 
 /* Knowledge Base Styles */
 .knowledge-base-container {
-    border-top: 1px solid var(--color-border);
-    max-height: 300px;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    max-height: 80vh;
+    width: 80%;
+    max-width: 800px;
     overflow-y: auto;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.knowledge-base-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    background: var(--color-bg);
+    z-index: 1;
+}
+
+.knowledge-base-header h3 {
+    margin: 0;
+    color: var(--color-wells-fargo-red);
 }
 
 .knowledge-base-list {

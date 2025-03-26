@@ -1605,7 +1605,31 @@ async function deleteKnowledgeBaseEntry(id) {
 }
 
 // Initialize event listeners when DOM is loaded
+function toggleKnowledgeBase() {
+    const kbContainer = document.querySelector('.knowledge-base-container');
+    const overlay = document.getElementById('kb-overlay');
+    
+    if (kbContainer.style.display === 'none' || !kbContainer.style.display) {
+        kbContainer.style.display = 'block';
+        overlay.style.display = 'block';
+    } else {
+        kbContainer.style.display = 'none';
+        overlay.style.display = 'none';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Add KB toggle button handler
+    const openKbBtn = document.getElementById('open-kb-btn');
+    if (openKbBtn) {
+        openKbBtn.addEventListener('click', toggleKnowledgeBase);
+    }
+    
+    // Add overlay click handler to close KB
+    const overlay = document.getElementById('kb-overlay');
+    if (overlay) {
+        overlay.addEventListener('click', toggleKnowledgeBase);
+    }
     // Initialize Feather icons
     if (window.feather) {
         feather.replace();
