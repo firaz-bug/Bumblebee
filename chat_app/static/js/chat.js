@@ -605,6 +605,11 @@ function renderIncidentsList(incidents) {
     }
 
     let html = '';
+    const priorityOrder = { "Critical": 1, "High": 2, "Medium": 3, "Low": 4, "Very Low": 5 };
+
+    // Sort incidents by priority
+    incidents.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+
     incidents.forEach(incident => {
         html += `
             <div class="incident-item" data-id="${incident.id}">
