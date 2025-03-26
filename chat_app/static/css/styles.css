@@ -864,10 +864,11 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 15px;
+    padding: 20px;
     border-radius: 6px;
     margin-bottom: 10px;
     cursor: pointer;
+    border-radius: 5px; /* Rounded corners */
     font-size: 14px;
     border: 1px solid var(--color-border);
     transition: background-color var(--transition-fast);
@@ -884,6 +885,7 @@ body {
 
 .incident-icon {
     margin-right: 8px;
+    margin-left:8px;
 }
 
 .incident-icon.high {
@@ -916,6 +918,13 @@ body {
     gap: 6px;
 }
 
+.incident-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    margin-left: 10px; /* Adds space between severity and title */
+}
+
 .incident-status.open {
     background-color: #fef2f2;
     color: #dc2626;
@@ -935,6 +944,19 @@ body {
     width: 16px;
     height: 16px;
 }
+.incident-severity {
+    font-weight: bold;
+    padding: 5px;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+/* Different styles for severity levels */
+.incident-severity.high { background-color: #ff4d4d; color: white; }
+.incident-severity.medium { background-color: #ffcc00; color: black; }
+.incident-severity.low { background-color: #4caf50; color: white; }
+.incident-severity.Critical { background-color: #d32f2f; }  /* Dark Red */
+.incident-severity.very-low { background-color: #8bc34a; color: black; }  /* Light Green */
 
 .loading-incidents {
     font-size: 14px;
