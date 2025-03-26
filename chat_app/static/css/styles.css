@@ -1342,7 +1342,7 @@ html, body {
 .app-container {
     height: calc(100vh - 60px);
     min-height: 600px;
-    overflow: auto;
+    /* overflow: auto; */
 }
 
 /* Notification styles */
@@ -1673,7 +1673,7 @@ html, body {
     max-width: 800px;
     width: 90%;
     max-height: 80vh;
-    overflow-y: auto;
+    /* overflow-y: auto; */
 }
 
 .automation-log-header {

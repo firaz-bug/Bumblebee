@@ -1055,7 +1055,7 @@ function updateRecommendedAutomations(automations) {
         return;
     }
 
-    let html = '<h4>Recommended Automations</h4>';
+    let html = '';
     automations.forEach(automation => {
         html += `
             <div class="automation-item recommended" data-id="${automation.id}">
@@ -1442,7 +1442,7 @@ function updateRecommendedDashboards(dashboards) {
         return;
     }
 
-    let html = '<h4>Recommended Dashboards</h4>';dashboards.forEach(dashboard => {
+    let html = '';dashboards.forEach(dashboard => {
         html += `
             <div class="dashboard-item recommended">
                 <div class="dashboard-name">${dashboard.name}</div>
