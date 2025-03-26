@@ -44,9 +44,9 @@ class AutomationAdmin(admin.ModelAdmin):
 
 @admin.register(Incident)
 class IncidentAdmin(admin.ModelAdmin):
-    list_display = ('title', 'severity', 'status', 'created_at')
-    search_fields = ('title', 'description')
-    list_filter = ('severity', 'status', 'created_at')
+    list_display = ('incident_number', 'priority', 'short_description', 'created_at')
+    search_fields = ('incident_number', 'short_description', 'long_description')
+    list_filter = ('priority', 'created_at')
 
 @admin.register(KnowledgeBase)
 class KnowledgeBaseAdmin(admin.ModelAdmin):

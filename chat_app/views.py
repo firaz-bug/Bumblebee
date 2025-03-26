@@ -413,7 +413,7 @@ def incidents(request):
             
             # Log incident creation
             Log.objects.create(
-                message=f"New incident created: {incident.title} (Severity: {incident.severity})",
+                message=f"New incident created: {incident.incident_number} - {incident.short_description} (Priority: {incident.priority})",
                 level="info",
                 source="api"
             )

@@ -103,16 +103,16 @@ class Automation(models.Model):
 class Incident(models.Model):
     """Model for storing incidents."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    title = models.CharField(max_length=255)
-    description = models.TextField()
-    severity = models.CharField(max_length=20)
-    status = models.CharField(max_length=20)
+    incident_number = models.CharField(max_length=50)
+    priority = models.CharField(max_length=20)
+    short_description = models.CharField(max_length=255)
+    long_description = models.TextField()
     comments = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.title
+        return f"{self.incident_number} - {self.short_description}"
         
 class Dashboard(models.Model):
     """Model for storing dashboard links."""
