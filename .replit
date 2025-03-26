@@ -44,8 +44,8 @@ run = ["sh", "-c", "pip install django djangorestframework requests && python ma
 
 [[ports]]
 localPort = 3000
-externalPort = 3000
+externalPort = 80
 
 [[ports]]
 localPort = 5000
-externalPort = 80
+externalPort = 5000

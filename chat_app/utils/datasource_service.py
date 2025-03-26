@@ -77,7 +77,8 @@ class DataSourceService:
             message: User message containing the @datasource command
             
         Returns:
-            str: Response to the data source command
+            dict or str: Response to the data source command, either a structured 
+                  dict with logs and results for queries, or a string for listing/errors
         """
         try:
             # Initialize default data sources if not done already
@@ -210,14 +211,53 @@ class DataSourceService:
             response = f"To query {datasource.name}, the following required parameters are missing:\n"
             for param in missing_params:
                 response += f"- {param}: {datasource.parameters[param]}\n"
-            return response
+            
+            # Format as structured response with logs
+            from datetime import datetime
+            result = {
+                'status': 'error',
+                'message': response,
+                'logs': [{
+                    'timestamp': datetime.now().isoformat(),
+                    'level': 'error',
+                    'message': f"Missing required parameters: {', '.join(missing_params)}"
+                }],
+                'raw_response': None,
+                'datasource': {
+                    'name': datasource.name,
+                    'id': str(datasource.id),
+                    'endpoint': datasource.endpoint
+                }
+            }
+            return result
         
-        # Execute the query
-        query_result = self.execute_query(datasource.endpoint, datasource.parameters, params)
+        # Execute the query with datasource info
+        datasource_info = {
+            'name': datasource.name,
+            'id': str(datasource.id),
+            'endpoint': datasource.endpoint,
+            'call_type': datasource.call_type
+        }
         
-        return f"**{datasource.name}** query result:\n\n{query_result}"
+        query_result = self.execute_query(
+            endpoint=datasource.endpoint, 
+            param_schema=datasource.parameters, 
+            params=params,
+            call_type=datasource.call_type,
+            datasource_info=datasource_info
+        )
+        
+        # Create a log entry in the database
+        from ..models import Log
+        Log.objects.create(
+            message=f"Data source query: {datasource.name} - {query_result.get('message', 'No details')}",
+            level="info" if query_result.get('status') == 'success' else "error",
+            source="datasource_service"
+        )
+        
+        return query_result
     
-    def execute_query(self, endpoint, param_schema, params):
+    def execute_query(self, endpoint, param_schema, params, call_type='GET', datasource_info=None):
         """
         Execute a data source query.
         
@@ -225,21 +265,67 @@ class DataSourceService:
             endpoint: API endpoint for the data source
             param_schema: Parameter schema with descriptions
             params: Actual parameters to use
+            call_type: HTTP method to use for the call (GET or POST)
+            datasource_info: Dict with information about the data source for logs
             
         Returns:
-            str: Result of the data source query
+            dict: Structured result of the data source query containing:
+                - status: 'success' or 'error'
+                - message: Human-readable message
+                - logs: List of log entries with timestamp, level, and message
+                - raw_response: Raw API response data if available
+                - datasource: Information about the queried data source
         """
+        # Initialize result structure
+        result = {
+            'status': 'error',
+            'message': 'Failed to execute data source query',
+            'logs': [],
+            'raw_response': None,
+            'datasource': datasource_info or {}
+        }
+        
+        # Add initial log entry
+        from datetime import datetime
+        timestamp = datetime.now().isoformat()
+        result['logs'].append({
+            'timestamp': timestamp,
+            'level': 'info',
+            'message': f"Starting data source query for endpoint: {endpoint}"
+        })
+        
         try:
+            # Log the execution attempt
+            logger.info(f"Executing data source query with endpoint: {endpoint}, call_type: {call_type}")
+            result['logs'].append({
+                'timestamp': datetime.now().isoformat(),
+                'level': 'info',
+                'message': f"Call type: {call_type}, Parameters: {params}"
+            })
+            
             # For external endpoints (starting with http)
             if endpoint.startswith(('http://', 'https://')):
                 # For weather API as an example
                 if "openweathermap" in endpoint:
                     # Get API key from environment
-                    api_key = os.getenv('OPENWEATHER_API_KEY')
+                    api_key = params.get('appid') or os.getenv('OPENWEATHER_API_KEY', 'demo_key')
                     if not api_key:
-                        return "Weather API key not configured. Please set the OPENWEATHER_API_KEY environment variable."
+                        result['logs'].append({
+                            'timestamp': datetime.now().isoformat(),
+                            'level': 'error',
+                            'message': "Weather API key not configured"
+                        })
+                        result['status'] = 'error'
+                        result['message'] = "Weather API key not configured. Please set the OPENWEATHER_API_KEY environment variable."
+                        return result
                     
                     # Make actual API call
+                    result['logs'].append({
+                        'timestamp': datetime.now().isoformat(),
+                        'level': 'info',
+                        'message': f"Calling weather API for location: {params.get('q', 'London')}"
+                    })
+                    
                     response = requests.get(endpoint, params={
                         'q': params.get('q', 'London'),
                         'appid': api_key,
@@ -252,47 +338,186 @@ class DataSourceService:
                         temp = data.get('main', {}).get('temp', 'unknown')
                         location = data.get('name', params.get('q', 'unknown location'))
                         
-                        return f"Weather in {location}: {weather}, Temperature: {temp}°C"
+                        result['logs'].append({
+                            'timestamp': datetime.now().isoformat(),
+                            'level': 'info',
+                            'message': f"Successfully retrieved weather data for {location}"
+                        })
+                        
+                        result['status'] = 'success'
+                        result['message'] = f"Weather in {location}: {weather}, Temperature: {temp}°C"
+                        result['raw_response'] = data
+                        return result
                     else:
-                        return f"Weather API returned an error: {response.status_code} - {response.text}"
+                        result['logs'].append({
+                            'timestamp': datetime.now().isoformat(),
+                            'level': 'error',
+                            'message': f"Weather API error: {response.status_code}"
+                        })
+                        
+                        result['status'] = 'error'
+                        result['message'] = f"Weather API returned an error: {response.status_code}"
+                        result['raw_response'] = response.text
+                        return result
                 
                 # For stock API as example
                 elif "marketdata" in endpoint:
                     # Get API key from environment
                     api_key = os.getenv('STOCK_API_KEY')
                     if not api_key:
-                        return "Stock API key not configured. Please set the STOCK_API_KEY environment variable."
+                        result['logs'].append({
+                            'timestamp': datetime.now().isoformat(),
+                            'level': 'error',
+                            'message': "Stock API key not configured"
+                        })
+                        
+                        result['status'] = 'error'
+                        result['message'] = "Stock API key not configured. Please set the STOCK_API_KEY environment variable."
+                        return result
                     
-                    # This is a mock implementation since we don't have a real API
                     symbol = params.get('symbol', '').upper()
+                    result['logs'].append({
+                        'timestamp': datetime.now().isoformat(),
+                        'level': 'info',
+                        'message': f"Querying stock data for symbol: {symbol}"
+                    })
+                    
+                    # This is for demonstration - would be a real API call in production
+                    result['logs'].append({
+                        'timestamp': datetime.now().isoformat(),
+                        'level': 'info',
+                        'message': f"Retrieved market data for {symbol}"
+                    })
+                    
                     if symbol == 'AAPL':
-                        return f"Stock: {symbol}\nPrice: $182.63\nChange: +1.2%"
+                        mock_data = {"symbol": symbol, "price": 182.63, "change": 1.2}
+                        result['status'] = 'success'
+                        result['message'] = f"Stock: {symbol}\nPrice: ${mock_data['price']}\nChange: +{mock_data['change']}%"
+                        result['raw_response'] = mock_data
+                        return result
                     elif symbol == 'MSFT':
-                        return f"Stock: {symbol}\nPrice: $415.32\nChange: +0.5%"
+                        mock_data = {"symbol": symbol, "price": 415.32, "change": 0.5}
+                        result['status'] = 'success'
+                        result['message'] = f"Stock: {symbol}\nPrice: ${mock_data['price']}\nChange: +{mock_data['change']}%"
+                        result['raw_response'] = mock_data
+                        return result
                     elif symbol == 'GOOG':
-                        return f"Stock: {symbol}\nPrice: $148.25\nChange: -0.3%"
+                        mock_data = {"symbol": symbol, "price": 148.25, "change": -0.3}
+                        result['status'] = 'success'
+                        result['message'] = f"Stock: {symbol}\nPrice: ${mock_data['price']}\nChange: {mock_data['change']}%"
+                        result['raw_response'] = mock_data
+                        return result
                     else:
-                        return f"Stock: {symbol}\nNo data available for this symbol."
+                        result['status'] = 'error'
+                        result['message'] = f"Stock: {symbol}\nNo data available for this symbol."
+                        return result
                 
                 # Generic external API call
                 try:
-                    response = requests.get(endpoint, params=params)
-                    return f"API response (status {response.status_code}):\n{response.text[:500]}"
+                    result['logs'].append({
+                        'timestamp': datetime.now().isoformat(),
+                        'level': 'info',
+                        'message': f"Making {call_type} request to {endpoint}"
+                    })
+                    
+                    if call_type.upper() == 'GET':
+                        response = requests.get(endpoint, params=params)
+                    else:  # Default to POST
+                        response = requests.post(endpoint, json=params)
+                    
+                    # Try to parse JSON response
+                    try:
+                        json_data = response.json()
+                        
+                        result['logs'].append({
+                            'timestamp': datetime.now().isoformat(),
+                            'level': 'info' if response.status_code < 400 else 'error',
+                            'message': f"Received response with status code: {response.status_code}"
+                        })
+                        
+                        result['status'] = 'success' if response.status_code < 400 else 'error'
+                        result['message'] = f"API response (status {response.status_code})"
+                        result['raw_response'] = json_data
+                        return result
+                    except ValueError:
+                        # Not a JSON response
+                        result['logs'].append({
+                            'timestamp': datetime.now().isoformat(),
+                            'level': 'info' if response.status_code < 400 else 'error',
+                            'message': f"Received non-JSON response with status code: {response.status_code}"
+                        })
+                        
+                        result['status'] = 'success' if response.status_code < 400 else 'error'
+                        result['message'] = f"API response (status {response.status_code})"
+                        result['raw_response'] = response.text
+                        return result
                 except Exception as e:
-                    return f"Failed to call external API: {str(e)}"
+                    logger.error(f"Failed to call external API: {str(e)}")
+                    
+                    result['logs'].append({
+                        'timestamp': datetime.now().isoformat(),
+                        'level': 'error',
+                        'message': f"API call failed: {str(e)}"
+                    })
+                    
+                    result['status'] = 'error'
+                    result['message'] = f"Failed to call external API: {str(e)}"
+                    return result
             
             # For internal endpoints
             if endpoint == "/api/user/profile":
                 user_id = params.get('user_id', 'current')
-                # This is a mock implementation
+                
+                result['logs'].append({
+                    'timestamp': datetime.now().isoformat(),
+                    'level': 'info',
+                    'message': f"Fetching user profile for user_id: {user_id}"
+                })
+                
+                # This is for demonstration
                 if user_id == 'current':
-                    return "User Profile:\nName: Demo User\nEmail: demo@example.com\nRole: Administrator"
+                    mock_data = {
+                        "name": "Demo User",
+                        "email": "demo@example.com",
+                        "role": "Administrator"
+                    }
+                    
+                    result['status'] = 'success'
+                    result['message'] = "User Profile:\nName: Demo User\nEmail: demo@example.com\nRole: Administrator"
+                    result['raw_response'] = mock_data
+                    return result
                 else:
-                    return f"User Profile (ID: {user_id}):\nName: User {user_id}\nEmail: user{user_id}@example.com\nRole: User"
+                    mock_data = {
+                        "name": f"User {user_id}",
+                        "email": f"user{user_id}@example.com",
+                        "role": "User"
+                    }
+                    
+                    result['status'] = 'success'
+                    result['message'] = f"User Profile (ID: {user_id}):\nName: User {user_id}\nEmail: user{user_id}@example.com\nRole: User"
+                    result['raw_response'] = mock_data
+                    return result
             
             # Default response for unhandled endpoints
-            return f"Query execution for endpoint {endpoint} is not implemented."
+            result['logs'].append({
+                'timestamp': datetime.now().isoformat(),
+                'level': 'warning',
+                'message': f"Unimplemented endpoint: {endpoint}"
+            })
+            
+            result['status'] = 'error'
+            result['message'] = f"Query execution for endpoint {endpoint} is not implemented."
+            return result
             
         except Exception as e:
             logger.error(f"Error executing data source query: {str(e)}")
-            return f"Error executing query: {str(e)}"
+            
+            result['logs'].append({
+                'timestamp': datetime.now().isoformat(),
+                'level': 'error',
+                'message': f"Query execution error: {str(e)}"
+            })
+            
+            result['status'] = 'error'
+            result['message'] = f"Error executing query: {str(e)}"
+            return result

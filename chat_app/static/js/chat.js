@@ -372,7 +372,34 @@ async function handleChatSubmit(event) {
             throw new Error('Failed to send message');
         }
 
-        // Fetch updated conversation with assistant response
+        // Get the response data to check for special responses like datasource logs
+        const responseData = await response.json();
+        
+        // Check if this is a datasource response with logs
+        if (responseData && responseData.datasource_logs) {
+            // Remove loading indicator
+            if (loadingElement) {
+                loadingElement.remove();
+            }
+
+            // Display messages directly from the response
+            displayMessages(responseData.messages);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Show datasource logs in modal
+            showDatasourceLogs(responseData.datasource_logs);
+            
+            // Create a log entry
+            createLogEntry(
+                responseData.datasource_logs.status === 'success' ? 'info' : 'error', 
+                'datasource_service',
+                `Data source '${responseData.datasource_logs.datasource?.name || 'Unknown'}' queried: ${responseData.datasource_logs.message || 'No details'}`
+            );
+            
+            return;
+        }
+
+        // Regular response - fetch updated conversation
         const conversationResponse = await fetch(`/api/conversations/${currentConversationId}/`);
         if (!conversationResponse.ok) {
             throw new Error('Failed to get conversation updates');
@@ -1145,6 +1172,119 @@ function showAutomationLogs(data) {
         btn.onclick = function() {
             modal.style.display = 'none';
             if (overlay) overlay.style.display = 'none';
+        };
+    });
+}
+
+// Function to show datasource logs in a modal
+function showDatasourceLogs(data) {
+    // Reuse the automation logs modal with different content
+    const modal = document.getElementById('automation-logs-modal');
+    const overlay = document.getElementById('automation-logs-overlay');
+    
+    if (!modal) return;
+    
+    // Format logs based on the structured response format
+    const datasourceInfo = data.datasource || {};
+    const datasourceName = datasourceInfo.name || 'Unknown Data Source';
+    const datasourceEndpoint = datasourceInfo.endpoint || '';
+    
+    // Extract result information
+    const resultStatus = data.status || 'unknown';
+    const resultMessage = data.message || 'No detailed information available';
+    
+    // Determine status class for styling
+    const statusClass = resultStatus === 'success' ? 'success' : 'error';
+    
+    // Get current timestamp
+    const timestamp = new Date().toLocaleString();
+    
+    // Update automation header information - reusing the automation modal elements
+    document.getElementById('automation-name').textContent = datasourceName;
+    document.getElementById('automation-timestamp').textContent = `Queried: ${timestamp}`;
+    document.getElementById('automation-description').textContent = `Endpoint: ${datasourceEndpoint}`;
+    
+    // Update modal title
+    const modalTitle = document.querySelector('#automation-logs-modal .modal-title');
+    if (modalTitle) modalTitle.textContent = 'Data Source Query Logs';
+    
+    // Clear previous logs
+    const logsContainer = document.getElementById('execution-logs-container');
+    if (logsContainer) {
+        logsContainer.innerHTML = '';
+        
+        // Process logs from the response
+        const logs = data.logs || [];
+        
+        if (logs.length > 0) {
+            logs.forEach(log => {
+                const logTime = log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+                const logLevel = log.level || 'info';
+                const logMessage = log.message || '';
+                
+                const logItem = document.createElement('div');
+                logItem.className = `log-item log-${logLevel}`;
+                logItem.innerHTML = `
+                    <span class="log-time">${logTime}</span>
+                    <span class="log-level">${logLevel}</span>
+                    <span class="log-message">${logMessage}</span>
+                `;
+                logsContainer.appendChild(logItem);
+            });
+        } else {
+            // Add a default log message if no logs provided
+            const defaultLog = document.createElement('div');
+            defaultLog.className = 'log-item log-info';
+            defaultLog.innerHTML = `
+                <span class="log-time">${new Date().toLocaleTimeString()}</span>
+                <span class="log-level">info</span>
+                <span class="log-message">Data source query executed</span>
+            `;
+            logsContainer.appendChild(defaultLog);
+        }
+    }
+    
+    // Update status display
+    const responseStatus = document.getElementById('response-status');
+    if (responseStatus) {
+        responseStatus.className = `status-${statusClass}`;
+        responseStatus.textContent = `(${resultStatus.toUpperCase()})`;
+    }
+    
+    // Update response data
+    const responseData = document.getElementById('api-response-data');
+    if (responseData) {
+        if (data.raw_response) {
+            let rawResponseData = '';
+            try {
+                // Try to prettify JSON if it's an object
+                if (typeof data.raw_response === 'object') {
+                    rawResponseData = JSON.stringify(data.raw_response, null, 2);
+                } else {
+                    rawResponseData = String(data.raw_response);
+                }
+            } catch (e) {
+                rawResponseData = String(data.raw_response);
+            }
+            responseData.textContent = rawResponseData;
+        } else {
+            responseData.textContent = resultMessage || 'No response data available';
+        }
+    }
+    
+    // Show the modal
+    modal.style.display = 'block';
+    if (overlay) overlay.style.display = 'block';
+    
+    // Add event listeners to close buttons
+    const closeButtons = modal.querySelectorAll('.modal-close, .modal-close-btn');
+    closeButtons.forEach(btn => {
+        btn.onclick = function() {
+            modal.style.display = 'none';
+            if (overlay) overlay.style.display = 'none';
+            
+            // Reset title back to "Automation Logs" for future automation uses
+            if (modalTitle) modalTitle.textContent = 'Automation Logs';
         };
     });
 }

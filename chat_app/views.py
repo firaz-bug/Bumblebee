@@ -158,16 +158,39 @@ def messages(request, conversation_id):
             # Handle data source command
             datasource_response = get_datasource_service().handle_datasource_command(user_message)
             
-            # Create assistant message with data source response
-            assistant_message = Message.objects.create(
-                conversation=conversation,
-                role='assistant',
-                content=datasource_response
-            )
-            
-            # Return both user and assistant messages
-            serializer = MessageSerializer([user_message_obj, assistant_message], many=True)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            # Check if response is structured (dict) or simple string
+            if isinstance(datasource_response, dict) and 'logs' in datasource_response:
+                # For structured responses, create an assistant message with basic info
+                # and include the full structured response for client-side processing
+                assistant_message_content = f"**{datasource_response.get('datasource', {}).get('name', 'Data Source')} Query Result:**\n\n"
+                
+                if datasource_response.get('status') == 'success':
+                    assistant_message_content += f"✅ {datasource_response.get('message', 'Query executed successfully.')}"
+                else:
+                    assistant_message_content += f"❌ {datasource_response.get('message', 'Query execution failed.')}"
+                
+                # Create the message
+                assistant_message = Message.objects.create(
+                    conversation=conversation,
+                    role='assistant',
+                    content=assistant_message_content
+                )
+                
+                # Return both messages with the structured response as metadata
+                serializer = MessageSerializer([user_message_obj, assistant_message], many=True)
+                response_data = {'messages': serializer.data, 'datasource_logs': datasource_response}
+                return Response(response_data, status=status.HTTP_201_CREATED)
+            else:
+                # For simple string responses (like listings or errors), just return the string
+                assistant_message = Message.objects.create(
+                    conversation=conversation,
+                    role='assistant',
+                    content=datasource_response
+                )
+                
+                # Return both user and assistant messages
+                serializer = MessageSerializer([user_message_obj, assistant_message], many=True)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         # Normal message processing
         # 1. Search vector store for relevant documents
@@ -417,14 +440,32 @@ def query_datasource(request, datasource_id):
             status=status.HTTP_404_NOT_FOUND
         )
     
-    # Execute the query
+    # Create datasource info for logs
+    datasource_info = {
+        'name': datasource.name,
+        'id': str(datasource.id),
+        'endpoint': datasource.endpoint,
+        'call_type': datasource.call_type
+    }
+    
+    # Execute the query with call_type and datasource info
     result = get_datasource_service().execute_query(
-        datasource.endpoint,
-        datasource.parameters,
-        request.data
+        endpoint=datasource.endpoint,
+        param_schema=datasource.parameters,
+        params=request.data,
+        call_type=datasource.call_type,
+        datasource_info=datasource_info
     )
     
-    return Response({"result": result})
+    # Create a log entry for this datasource query
+    log_entry = Log.objects.create(
+        message=f"Executed data source query: {datasource.name}",
+        level="info" if result.get('status') == 'success' else "error",
+        source="datasource_service"
+    )
+    
+    # Return the structured result directly
+    return Response(result)
 
 @api_view(['GET', 'POST'])
 @csrf_exempt
