@@ -69,6 +69,7 @@ def index(request):
     })
 
 @api_view(['GET', 'POST'])
+@csrf_exempt
 def conversations(request):
     """API endpoint for managing conversations."""
     if request.method == 'GET':
@@ -114,6 +115,7 @@ def conversation_detail(request, conversation_id):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 @api_view(['GET', 'POST'])
+@csrf_exempt
 def messages(request, conversation_id):
     """API endpoint for messages in a conversation."""
     try:
@@ -340,6 +342,7 @@ def automations(request):
     return Response(serializer.data)
 
 @api_view(['POST'])
+@csrf_exempt
 def trigger_automation(request, automation_id):
     """API endpoint to trigger a specific automation."""
     try:
@@ -430,6 +433,7 @@ def datasources(request):
     return Response(serializer.data)
 
 @api_view(['POST'])
+@csrf_exempt
 def query_datasource(request, datasource_id):
     """API endpoint to query a specific data source."""
     try:

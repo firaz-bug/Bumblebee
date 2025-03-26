@@ -17,13 +17,20 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-q3^#!%38f8_6!q1+cx@
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['0.0.0.0', 'localhost', '127.0.0.1', '.replit.dev', '.repl.co', '.sisko.replit.dev']
+ALLOWED_HOSTS = ['0.0.0.0', 'localhost', '127.0.0.1', '.replit.dev', '.repl.co', '.sisko.replit.dev', '*']
 CSRF_TRUSTED_ORIGINS = [
     'https://*.replit.dev',
     'https://*.repl.co',
     'https://*.sisko.replit.dev',
-    'https://5c3a75fc-ee19-46c1-bdfa-f83a3406b60d-00-256xi9t9qfilw.sisko.replit.dev:3000'
+    'https://*.sisko.replit.dev:5000',
+    'https://*.sisko.replit.dev:3000',
+    'http://localhost:5000',
+    'http://0.0.0.0:5000'
 ]
+
+# CSRF settings for easier development
+CSRF_COOKIE_SECURE = False
+CSRF_COOKIE_HTTPONLY = False
 
 
 # Application definition
