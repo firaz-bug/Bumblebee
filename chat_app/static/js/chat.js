@@ -461,51 +461,52 @@ async function handleChatSubmit(event) {
         // Display all messages
         displayMessages(updatedConversation.messages);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+
     } catch (error) {
         console.error('Error sending message:', error);
-        
+
         // Remove loading indicator
         if (loadingElement) {
             loadingElement.remove();
         }
-        
-        // Add error message
-        const errorMessageHtml = `
-            <div class="message system error">
+
+        // Display error message
+        const errorHtml = `
+            <div class="message system">
                 <div class="message-content">Error: Failed to send message. Please try again.</div>
             </div>
         `;
-        chatMessages.insertAdjacentHTML('beforeend', errorMessageHtml);
+        chatMessages.insertAdjacentHTML('beforeend', errorHtml);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 }
 
 // Function to load documents
 async function loadDocuments() {
+    const documentsList = document.getElementById('documents-list');
+    if (!documentsList) return;
+
     try {
         const response = await fetch('/api/documents/');
         if (!response.ok) {
-            throw new Error('Failed to load documents');
+            throw new Error('Network response was not ok');
         }
 
         const documents = await response.json();
         renderDocumentsList(documents);
     } catch (error) {
         console.error('Error loading documents:', error);
-        const documentsContainer = document.getElementById('documents-list');
-        if (documentsContainer) {
-            documentsContainer.innerHTML = '<div class="error">Failed to load documents</div>';
-        }
+        documentsList.innerHTML = '<div class="loading-error">Failed to load documents. Please try again.</div>';
     }
 }
 
 // Function to render documents list
 function renderDocumentsList(documents) {
-    const documentsContainer = document.getElementById('documents-list');
-    if (!documentsContainer) return;
+    const documentsList = document.getElementById('documents-list');
+    if (!documentsList) return;
 
-    if (!documents || documents.length === 0) {
-        documentsContainer.innerHTML = '<div class="empty-state">No documents uploaded yet</div>';
+    if (documents.length === 0) {
+        documentsList.innerHTML = '<div class="empty-state">No documents uploaded yet</div>';
         return;
     }
 
@@ -514,56 +515,63 @@ function renderDocumentsList(documents) {
         const fileTypeIcon = getFileTypeIcon(doc.file_type);
         html += `
             <div class="document-item" data-id="${doc.id}">
-                <div class="document-icon">${fileTypeIcon}</div>
-                <div class="document-details">
+                <div class="document-info">
+                    <i data-feather="${fileTypeIcon}" class="document-icon"></i>
                     <div class="document-title">${doc.title}</div>
-                    <div class="document-date">${new Date(doc.uploaded_at).toLocaleString()}</div>
+                    <div class="document-type">${doc.file_type.toUpperCase()}</div>
                 </div>
-                <button class="document-delete-btn" data-id="${doc.id}" aria-label="Delete document">
-                    <i class="fas fa-trash"></i>
-                </button>
+                <div class="document-actions">
+                    <button class="delete-document-btn" data-id="${doc.id}" title="Delete document">
+                        <i data-feather="trash-2"></i>
+                    </button>
+                </div>
             </div>
         `;
     });
 
-    documentsContainer.innerHTML = html;
+    documentsList.innerHTML = html;
 
-    // Add event listeners for delete buttons
-    document.querySelectorAll('.document-delete-btn').forEach(btn => {
+    // Initialize feather icons
+    feather.replace();
+
+    // Add event listeners to delete buttons
+    document.querySelectorAll('.delete-document-btn').forEach(btn => {
         btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const documentId = this.getAttribute('data-id');
-            if (confirm('Are you sure you want to delete this document?')) {
-                deleteDocument(documentId);
-            }
+            e.stopPropagation(); // Prevent triggering parent click events
+            const documentId = this.dataset.id;
+            deleteDocument(documentId);
         });
     });
 }
 
-// Helper function to get file type icon
+// Helper function to get the appropriate icon for file type
 function getFileTypeIcon(fileType) {
-    const iconMap = {
-        'pdf': '<i class="fas fa-file-pdf"></i>',
-        'docx': '<i class="fas fa-file-word"></i>',
-        'doc': '<i class="fas fa-file-word"></i>',
-        'txt': '<i class="fas fa-file-alt"></i>',
-        'csv': '<i class="fas fa-file-csv"></i>',
-        'xlsx': '<i class="fas fa-file-excel"></i>',
-        'xls': '<i class="fas fa-file-excel"></i>',
-        'pptx': '<i class="fas fa-file-powerpoint"></i>',
-        'ppt': '<i class="fas fa-file-powerpoint"></i>',
-        'jpg': '<i class="fas fa-file-image"></i>',
-        'jpeg': '<i class="fas fa-file-image"></i>',
-        'png': '<i class="fas fa-file-image"></i>',
-        'gif': '<i class="fas fa-file-image"></i>',
-    };
-
-    return iconMap[fileType.toLowerCase()] || '<i class="fas fa-file"></i>';
+    const type = fileType.toLowerCase();
+    if (type.includes('pdf')) {
+        return 'file-text';
+    } else if (type.includes('doc') || type.includes('word')) {
+        return 'file-text';
+    } else if (type.includes('txt') || type.includes('text')) {
+        return 'file';
+    } else if (type.includes('xls') || type.includes('sheet') || type.includes('csv')) {
+        return 'grid';
+    } else if (type.includes('ppt') || type.includes('presentation')) {
+        return 'monitor';
+    } else if (type.includes('jpg') || type.includes('jpeg') || type.includes('png') || type.includes('gif')) {
+        return 'image';
+    } else {
+        return 'file';
+    }
 }
 
-// Delete a document
+// Function to delete a document
 async function deleteDocument(documentId) {
+    if (!confirm('Are you sure you want to delete this document?')) {
+        return;
+    }
+
     try {
+        // Using the correct endpoint pattern
         const response = await fetch(`/api/documents/${documentId}/`, {
             method: 'DELETE',
             headers: {
@@ -572,87 +580,50 @@ async function deleteDocument(documentId) {
         });
 
         if (!response.ok) {
-            throw new Error('Failed to delete document');
+            throw new Error(`Failed to delete document: ${response.status} ${response.statusText}`);
         }
 
-        // Reload documents list
-        await loadDocuments();
+        // Show success notification
         showNotification('Document deleted successfully', 'success');
+
+        // Reload documents
+        loadDocuments();
     } catch (error) {
         console.error('Error deleting document:', error);
-        showNotification('Failed to delete document', 'error');
+        showNotification('Failed to delete document. Please try again.', 'error');
     }
 }
 
-// Function to render incidents list
+// Function to render the incidents list
 function renderIncidentsList(incidents) {
-    const incidentsContainer = document.getElementById('incidents-list');
-    if (!incidentsContainer) return;
+    const incidentsList = document.getElementById('incidents-list');
+    if (!incidentsList) return;
 
-    if (!incidents || incidents.length === 0) {
-        incidentsContainer.innerHTML = '<div class="empty-state">No incidents found</div>';
+    if (incidents.length === 0) {
+        incidentsList.innerHTML = '<div class="empty-state">No incidents available</div>';
         return;
     }
 
     let html = '';
     incidents.forEach(incident => {
-        // Set severity class based on priority
-        let severityClass = '';
-        if (incident.priority && incident.priority.toLowerCase().includes('critical')) {
-            severityClass = 'critical';
-        } else if (incident.priority && incident.priority.toLowerCase().includes('high')) {
-            severityClass = 'high';
-        } else if (incident.priority && incident.priority.toLowerCase().includes('medium')) {
-            severityClass = 'medium';
-        } else {
-            severityClass = 'low';
-        }
-        
-        // Get status badge based on state
-        let statusBadge = '';
-        const statusMap = {
-            1: { text: 'New', class: 'new' },
-            2: { text: 'In Progress', class: 'in-progress' },
-            3: { text: 'On Hold', class: 'on-hold' },
-            4: { text: 'Resolved', class: 'resolved' },
-            5: { text: 'Closed/Canceled', class: 'closed' }
-        };
-        
-        const status = statusMap[incident.state] || { text: 'Unknown', class: '' };
-        statusBadge = `<span class="status-badge ${status.class}">${status.text}</span>`;
-
         html += `
             <div class="incident-item" data-id="${incident.id}">
-                <div class="incident-header">
-                    <div class="incident-title">${incident.incident_number}: ${incident.short_description}</div>
-                    <div class="incident-severity ${severityClass}">${incident.priority}</div>
-                </div>
-                <div class="incident-status">
-                    ${statusBadge}
-                </div>
+                <div class="incident-severity ${incident.priority}">${incident.priority}</div>
+                <div class="incident-title">${incident.incident_number}: ${incident.short_description}</div>
             </div>
         `;
     });
 
-    incidentsContainer.innerHTML = html;
+    incidentsList.innerHTML = html;
 
-    // Add click event listeners to show details
+    // Add click event listeners
     document.querySelectorAll('.incident-item').forEach(item => {
         item.addEventListener('click', function() {
-            const incidentId = this.dataset.id;
-            
-            // Don't reload if already selected
-            if (currentIncidentId === incidentId) return;
-            
-            fetchIncidentDetails(incidentId);
-            
-            // Highlight selected incident
             highlightIncident(this);
+            const incidentId = this.dataset.id;
+            fetchIncidentDetails(incidentId);
         });
     });
-    
-    // Update summary
-    updateIncidentsSummary(incidents);
 }
 
 // Function to show incident details
@@ -660,7 +631,13 @@ function showIncidentDetails(incident) {
     const detailsContainer = document.getElementById('incident-details');
     if (!detailsContainer) return;
 
-    // Set state text based on the state value
+    currentIncidentId = incident.id;
+
+    // Format created and updated dates
+    const createdDate = new Date(incident.created_at).toLocaleString();
+    const updatedDate = new Date(incident.updated_at).toLocaleString();
+
+    // Get state display based on the state value
     const stateMap = {
         1: 'New',
         2: 'In Progress',
@@ -668,73 +645,89 @@ function showIncidentDetails(incident) {
         4: 'Resolved',
         5: 'Closed/Canceled'
     };
-    
-    const stateText = stateMap[incident.state] || 'Unknown';
-    const stateClass = stateText.toLowerCase().replace(/\s+/g, '-');
+    const stateDisplay = incident.state_display || stateMap[incident.state] || 'Unknown';
 
+    // Build the HTML for the details section
     let html = `
-        <div class="incident-detail-header">
-            <h3>${incident.incident_number}</h3>
-            <div class="incident-detail-priority">${incident.priority}</div>
+        <h3>${incident.incident_number}: ${incident.short_description}</h3>
+        <div class="incident-detail-row">
+            <span class="detail-label">Priority:</span>
+            <span class="detail-value ${incident.priority}">${incident.priority}</span>
         </div>
-        <div class="incident-detail-state ${stateClass}">
-            ${stateText}
+        <div class="incident-detail-row">
+            <span class="detail-label">State:</span>
+            <span class="detail-value">${stateDisplay}</span>
         </div>
-        <div class="incident-detail-description">
-            <h4>Short Description</h4>
-            <p>${incident.short_description}</p>
-            <h4>Long Description</h4>
+        <div class="incident-detail-row">
+            <span class="detail-label">Created:</span>
+            <span class="detail-value">${createdDate}</span>
+        </div>
+        <div class="incident-detail-row">
+            <span class="detail-label">Updated:</span>
+            <span class="detail-value">${updatedDate}</span>
+        </div>
+        <div class="incident-description">
+            <span class="detail-label">Description:</span>
             <p>${incident.long_description}</p>
         </div>
     `;
-    
-    // Add state update buttons
-    html += `<div class="incident-actions">`;
-    
-    // Show different actions based on current state
-    if (incident.state < 4) { // For states 1, 2, 3 (New, In Progress, On Hold)
+
+    // Add comments section if there are comments
+    if (incident.comments) {
         html += `
-            <button class="status-btn in-progress" data-state="2">Mark In Progress</button>
-            <button class="status-btn on-hold" data-state="3">Mark On Hold</button>
-            <button class="status-btn resolved" data-state="4">Mark Resolved</button>
-            <button class="status-btn closed" data-state="5">Close/Cancel</button>
-        `;
-    } else if (incident.state === 4) { // For Resolved
-        html += `
-            <button class="status-btn in-progress" data-state="2">Reopen (In Progress)</button>
-            <button class="status-btn closed" data-state="5">Close/Cancel</button>
-        `;
-    } else { // For Closed
-        html += `
-            <button class="status-btn in-progress" data-state="2">Reopen (In Progress)</button>
+            <div class="incident-comments">
+                <span class="detail-label">Comments:</span>
+                <p>${incident.comments}</p>
+            </div>
         `;
     }
-    
-    // Add comments button for all states
-    html += `<button class="status-btn add-comments" data-state="add-comments">Add Comments</button>`;
-    html += `</div>`;
-    
-    // Add comments section
+
+    // Show state update control
     html += `
-        <div class="incident-comments">
-            <h4>Comments</h4>
-            <div class="comments-content">
-                ${incident.comments ? incident.comments : '<em>No comments yet</em>'}
-            </div>
+        <div class="incident-actions">
+            <button id="update-state-btn" class="btn">Update State</button>
+            <button id="add-comments-btn" class="btn">Add Comments</button>
         </div>
     `;
 
     detailsContainer.innerHTML = html;
-    
-    // Add event listeners to status buttons
-    detailsContainer.querySelectorAll('.status-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const newState = this.dataset.state;
-            showStatusUpdateModal(incident.id, newState);
+
+    // Add event listener for the Add Comments button
+    const addCommentsBtn = document.getElementById('add-comments-btn');
+    if (addCommentsBtn) {
+        addCommentsBtn.addEventListener('click', function() {
+            showStatusUpdateModal(incident.id, 'add-comments');
         });
-    });
-    
-    // Fetch recommendations based on incident
+    }
+
+    // Add event listener for the Update State button
+    const updateStateBtn = document.getElementById('update-state-btn');
+    if (updateStateBtn) {
+        updateStateBtn.addEventListener('click', function() {
+            // Show the status update controls
+            const statusControls = document.getElementById('incident-status-controls');
+            if (statusControls) {
+                statusControls.style.display = 'flex';
+                
+                // Set the current state in the dropdown
+                const stateSelect = document.getElementById('status-select');
+                if (stateSelect) {
+                    stateSelect.value = incident.state;
+                }
+                
+                // Add click event to the update button
+                const updateBtn = document.getElementById('update-status-btn');
+                if (updateBtn) {
+                    updateBtn.onclick = function() {
+                        const newState = stateSelect.value;
+                        showStatusUpdateModal(incident.id, newState);
+                    };
+                }
+            }
+        });
+    }
+
+    // Fetch recommendations based on the incident
     fetchRecommendations(incident.id);
 }
 
@@ -748,7 +741,6 @@ function fetchIncidentDetails(incidentId) {
             return response.json();
         })
         .then(incident => {
-            currentIncidentId = incidentId;
             showIncidentDetails(incident);
         })
         .catch(error => {
@@ -762,78 +754,59 @@ function fetchIncidentDetails(incidentId) {
 
 // Function to fetch recommendations based on incident
 function fetchRecommendations(incidentId) {
+    // Fetch automations
     fetch(`/api/incidents/${incidentId}/`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to fetch incident details');
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(incident => {
-            // Update automation recommendations
-            if (incident.recommended_automations) {
-                updateRecommendedAutomations(incident.recommended_automations);
-            }
-            
-            // Update dashboard recommendations
-            if (incident.recommended_dashboards) {
-                updateRecommendedDashboards(incident.recommended_dashboards);
-            }
+            // Get recommended automations
+            const relevantAutomations = incident.recommended_automations || [];
+            updateRecommendedAutomations(relevantAutomations);
+
+            // Get recommended dashboards
+            const relevantDashboards = incident.recommended_dashboards || [];
+            updateRecommendedDashboards(relevantDashboards);
         })
         .catch(error => {
             console.error('Error fetching recommendations:', error);
         });
 }
 
-// Function to highlight selected incident
+// Function to highlight the selected incident
 function highlightIncident(element) {
-    // Remove active class from all incidents
+    // Remove highlight from other incidents
     document.querySelectorAll('.incident-item').forEach(item => {
-        item.classList.remove('active');
+        item.style.backgroundColor = 'white';
     });
-    
-    // Add active class to selected incident
-    element.classList.add('active');
+    // Highlight clicked incident
+    element.style.backgroundColor = '#f0f0f0';
 }
 
-// Function to show status update modal
+// Function to show the status update modal
 function showStatusUpdateModal(incidentId, newStatus) {
-    const statusModal = document.getElementById('status-update-modal');
-    if (!statusModal) return;
-    
-    // Set modal title based on new status
-    const statusTitleMap = {
-        '1': 'Update to New',
-        '2': 'Update to In Progress',
-        '3': 'Update to On Hold',
-        '4': 'Update to Resolved',
-        '5': 'Update to Closed/Canceled',
-        'add-comments': 'Add Comments'
-    };
-    
-    const modalTitle = statusModal.querySelector('.modal-title');
-    if (modalTitle) {
-        modalTitle.textContent = statusTitleMap[newStatus] || 'Update Status';
+    const modal = document.getElementById('status-update-modal');
+    if (modal) {
+        modal.style.display = 'block';
+        modal.dataset.incidentId = incidentId;
+        modal.dataset.newStatus = newStatus;
+
+        // Update modal title based on status
+        const modalTitle = modal.querySelector('h2');
+        if (modalTitle) {
+            const stateMap = {
+                1: 'New', 
+                2: 'In Progress',
+                3: 'On Hold',
+                4: 'Resolved',
+                5: 'Closed/Canceled',
+                'add-comments': 'Add Comments'
+            };
+            
+            const statusName = stateMap[newStatus] || 'Update State';
+            modalTitle.textContent = newStatus === 'add-comments' 
+                ? `Add Comments to Incident` 
+                : `Update Status to ${statusName}`;
+        }
     }
-    
-    // Set data attributes for the form submission handler
-    statusModal.dataset.incidentId = incidentId;
-    statusModal.dataset.newStatus = newStatus;
-    
-    // Set comments label based on action
-    const commentsLabel = statusModal.querySelector('label[for="status-comments"]');
-    if (commentsLabel) {
-        commentsLabel.textContent = newStatus === 'add-comments' ? 'Comments:' : 'Comments for status update:';
-    }
-    
-    // Clear previous comments
-    const commentsField = document.getElementById('status-comments');
-    if (commentsField) {
-        commentsField.value = '';
-    }
-    
-    // Show the modal
-    statusModal.style.display = 'block';
 }
 
 // Function to update incident status
@@ -951,105 +924,109 @@ function updateIncidentInList(updatedIncident) {
         
         const priorityElement = incidentElement.querySelector('.incident-severity');
         if (priorityElement) {
-            // Update priority
-            priorityElement.textContent = updatedIncident.priority;
-            
-            // Update severity class
-            priorityElement.className = 'incident-severity';
-            if (updatedIncident.priority.toLowerCase().includes('critical')) {
-                priorityElement.classList.add('critical');
-            } else if (updatedIncident.priority.toLowerCase().includes('high')) {
-                priorityElement.classList.add('high');
-            } else if (updatedIncident.priority.toLowerCase().includes('medium')) {
-                priorityElement.classList.add('medium');
-            } else {
-                priorityElement.classList.add('low');
+            // Update the priority class and text if it changed
+            const oldPriorityClass = priorityElement.className.split(' ')[1];
+            if (oldPriorityClass !== updatedIncident.priority) {
+                priorityElement.classList.remove(oldPriorityClass);
+                priorityElement.classList.add(updatedIncident.priority);
+                priorityElement.textContent = updatedIncident.priority;
             }
-        }
-        
-        // Update status badge
-        const statusElement = incidentElement.querySelector('.incident-status');
-        if (statusElement) {
-            const statusMap = {
-                1: { text: 'New', class: 'new' },
-                2: { text: 'In Progress', class: 'in-progress' },
-                3: { text: 'On Hold', class: 'on-hold' },
-                4: { text: 'Resolved', class: 'resolved' },
-                5: { text: 'Closed/Canceled', class: 'closed' }
-            };
-            
-            const status = statusMap[updatedIncident.state] || { text: 'Unknown', class: '' };
-            statusElement.innerHTML = `<span class="status-badge ${status.class}">${status.text}</span>`;
         }
     }
 }
 
-// Function to update incidents summary
+// Function to update the incidents summary
 function updateIncidentsSummary(incidents) {
-    const summaryElement = document.getElementById('incidents-summary');
-    if (!summaryElement) return;
-    
-    // Count incidents by state
-    const stateCounts = {
-        1: 0, // New
-        2: 0, // In Progress
-        3: 0, // On Hold
-        4: 0, // Resolved
-        5: 0  // Closed/Canceled
-    };
-    
-    incidents.forEach(incident => {
-        if (stateCounts.hasOwnProperty(incident.state)) {
-            stateCounts[incident.state]++;
-        }
-    });
-    
-    // Update summary text
-    summaryElement.innerHTML = `
-        <div>Total: <strong>${incidents.length}</strong></div>
-        <div>New: <strong>${stateCounts[1]}</strong></div>
-        <div>In Progress: <strong>${stateCounts[2]}</strong></div>
-        <div>On Hold: <strong>${stateCounts[3]}</strong></div>
-        <div>Resolved: <strong>${stateCounts[4]}</strong></div>
-        <div>Closed: <strong>${stateCounts[5]}</strong></div>
+    const summaryContainer = document.getElementById('incident-summary');
+    if (!summaryContainer) return;
+
+    // Count incidents by priority
+    let highPriorityIncidents = incidents.filter(inc => inc.priority && inc.priority.toLowerCase() === 'high').length;
+    let mediumPriorityIncidents = incidents.filter(inc => inc.priority && inc.priority.toLowerCase() === 'medium').length;
+    let lowPriorityIncidents = incidents.filter(inc => inc.priority && inc.priority.toLowerCase() === 'low').length;
+    let totalIncidents = incidents.length;
+
+    // Create the HTML for the incident summary section
+    let summaryHTML = `
+        <h3>Incidents Overview</h3>
+        <div class="summary-content">
+            <div class="summary-stats">
+                <div class="severity-item high">
+                    <span>High Priority</span>
+                    <span>${highPriorityIncidents}</span>
+                </div>
+                <div class="severity-item medium">
+                    <span>Medium Priority</span>
+                    <span>${mediumPriorityIncidents}</span>
+                </div>
+                <div class="severity-item low">
+                    <span>Low Priority</span>
+                    <span>${lowPriorityIncidents}</span>
+                </div>
+                <div class="severity-item">
+                    <span>Total</span>
+                    <span>${totalIncidents}</span>
+                </div>
+            </div>
+        </div>
     `;
+
+    // Update the summary container with our HTML
+    summaryContainer.innerHTML = summaryHTML;
 }
 
-// Function to load incidents from API
+// Function to load incidents
 function loadIncidents() {
+    const incidentsList = document.getElementById('incidents-list');
+    if (!incidentsList) {
+        console.warn('Incidents list element not found in the DOM');
+        return;
+    }
+
+    // Show loading indicator
+    incidentsList.innerHTML = '<div class="loading-incidents">Loading incidents...</div>';
+
     fetch('/api/incidents/')
         .then(response => {
             if (!response.ok) {
-                throw new Error('Failed to load incidents');
+                throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
             }
             return response.json();
         })
         .then(incidents => {
-            renderIncidentsList(incidents);
-            
-            // If we have a currentIncidentId, reselect that incident
-            if (currentIncidentId) {
-                const incidentElement = document.querySelector(`.incident-item[data-id="${currentIncidentId}"]`);
-                if (incidentElement) {
-                    highlightIncident(incidentElement);
+            if (Array.isArray(incidents)) {
+                renderIncidentsList(incidents);
+
+                // Only update summary if the container exists
+                const summaryContainer = document.getElementById('incident-summary');
+                if (summaryContainer) {
+                    updateIncidentsSummary(incidents);
                 }
+            } else {
+                throw new Error('Invalid incidents data format');
             }
         })
         .catch(error => {
             console.error('Error loading incidents:', error);
-            const incidentsContainer = document.getElementById('incidents-list');
-            if (incidentsContainer) {
-                incidentsContainer.innerHTML = '<div class="error">Failed to load incidents</div>';
+            incidentsList.innerHTML = '<div class="loading-incidents error">Failed to load incidents. Please refresh the page or try again later.</div>';
+
+            // Only update summary if the container exists
+            const summaryContainer = document.getElementById('incident-summary');
+            if (summaryContainer) {
+                updateIncidentsSummary([]);
             }
         });
 }
 
-// Function to load automations from API
+// Function to load automations
 function loadAutomations() {
+    const automationsList = document.getElementById('automations-list');
+    if (!automationsList) return;
+
     fetch('/api/automations/')
         .then(response => {
             if (!response.ok) {
-                throw new Error('Failed to load automations');
+                throw new Error('Network response was not ok');
             }
             return response.json();
         })
@@ -1058,80 +1035,50 @@ function loadAutomations() {
         })
         .catch(error => {
             console.error('Error loading automations:', error);
-            const automationsContainer = document.getElementById('automations-list');
-            if (automationsContainer) {
-                automationsContainer.innerHTML = '<div class="error">Failed to load automations</div>';
-            }
+            automationsList.innerHTML = '<div class="loading-error">Failed to load automations. Please try again.</div>';
         });
 }
 
-// Function to update recommended automations
-function updateRecommendedAutomations(automationIds) {
-    // First get all automations
-    fetch('/api/automations/')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to load automations');
-            }
-            return response.json();
-        })
-        .then(automations => {
-            // Filter to just recommended ones
-            const recommendedAutomations = automations.filter(automation => 
-                automationIds.includes(automation.id)
-            );
-            
-            // Render the recommended automations
-            const container = document.getElementById('recommendations-automations');
-            if (!container) return;
-            
-            if (recommendedAutomations.length === 0) {
-                container.innerHTML = '<div class="empty-state">No recommended automations</div>';
-                return;
-            }
-            
-            let html = '';
-            recommendedAutomations.forEach(automation => {
-                html += `
-                    <div class="recommendation-item automation-item" data-id="${automation.id}">
-                        <div class="recommendation-icon"><i class="fas fa-robot"></i></div>
-                        <div class="recommendation-details">
-                            <div class="recommendation-title">${automation.name}</div>
-                            <div class="recommendation-description">${automation.description}</div>
-                        </div>
-                        <button class="trigger-automation-btn" data-id="${automation.id}" aria-label="Run Automation">
-                            <i class="fas fa-play"></i>
-                        </button>
-                    </div>
-                `;
-            });
-            
-            container.innerHTML = html;
-            
-            // Add event listeners to the trigger buttons
-            container.querySelectorAll('.trigger-automation-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const automationId = this.dataset.id;
-                    triggerAutomation(automationId);
-                });
-            });
-        })
-        .catch(error => {
-            console.error('Error updating recommended automations:', error);
-            const container = document.getElementById('recommendations-automations');
-            if (container) {
-                container.innerHTML = '<div class="error">Failed to load recommended automations</div>';
-            }
-        });
-}
+// Function to update recommended automations based on incident selection
+function updateRecommendedAutomations(automations) {
+    const automationsList = document.getElementById('automations-list');
+    if (!automationsList) return;
 
-// Function to render automations list
-function renderAutomationsList(automations) {
-    const automationsContainer = document.getElementById('automations-list');
-    if (!automationsContainer) return;
-
+    // If no recommended automations, show message
     if (!automations || automations.length === 0) {
-        automationsContainer.innerHTML = '<div class="empty-state">No automations available</div>';
+        automationsList.innerHTML = '<div class="empty-state">No relevant automations found for this incident</div>';
+        return;
+    }
+
+    let html = '<h4>Recommended Automations</h4>';
+    automations.forEach(automation => {
+        html += `
+            <div class="automation-item recommended" data-id="${automation.id}">
+                <div class="automation-name">${automation.name}</div>
+                <div class="automation-description">${automation.description}</div>
+                <button class="run-btn" data-id="${automation.id}">Run</button>
+            </div>
+        `;
+    });
+
+    automationsList.innerHTML = html;
+
+    // Add event listeners to run buttons
+    document.querySelectorAll('.automation-item .run-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const automationId = this.dataset.id;
+            triggerAutomation(automationId);
+        });
+    });
+}
+
+// Function to render the automations list
+function renderAutomationsList(automations) {
+    const automationsList = document.getElementById('automations-list');
+    if (!automationsList) return;
+
+    if (automations.length === 0) {
+        automationsList.innerHTML = '<div class="empty-state">No automations available</div>';
         return;
     }
 
@@ -1139,22 +1086,17 @@ function renderAutomationsList(automations) {
     automations.forEach(automation => {
         html += `
             <div class="automation-item" data-id="${automation.id}">
-                <div class="automation-icon"><i class="fas fa-robot"></i></div>
-                <div class="automation-details">
-                    <div class="automation-title">${automation.name}</div>
-                    <div class="automation-description">${automation.description}</div>
-                </div>
-                <button class="trigger-automation-btn" data-id="${automation.id}" aria-label="Run Automation">
-                    <i class="fas fa-play"></i>
-                </button>
+                <div class="automation-name">${automation.name}</div>
+                <div class="automation-description">${automation.description}</div>
+                <button class="run-btn" data-id="${automation.id}">Run</button>
             </div>
         `;
     });
 
-    automationsContainer.innerHTML = html;
+    automationsList.innerHTML = html;
 
-    // Add event listeners to the trigger buttons
-    automationsContainer.querySelectorAll('.trigger-automation-btn').forEach(btn => {
+    // Add event listeners to run buttons
+    document.querySelectorAll('.automation-item .run-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const automationId = this.dataset.id;
             triggerAutomation(automationId);
@@ -1164,12 +1106,21 @@ function renderAutomationsList(automations) {
 
 // Function to trigger an automation
 function triggerAutomation(automationId) {
+    // Show loading indicator
+    const btn = document.querySelector(`.run-btn[data-id="${automationId}"]`);
+    const originalText = btn ? btn.innerText : 'Run';
+    if (btn) {
+        btn.innerText = 'Running...';
+        btn.disabled = true;
+    }
+
     fetch(`/api/automations/${automationId}/trigger/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': getCSRFToken()
-        }
+        },
+        body: JSON.stringify({})
     })
     .then(response => {
         if (!response.ok) {
@@ -1178,124 +1129,251 @@ function triggerAutomation(automationId) {
         return response.json();
     })
     .then(data => {
-        console.log('Automation triggered successfully:', data);
-        
-        // Show logs modal
+        // Reset button state
+        if (btn) {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+
+        // Show logs in the modal
         showAutomationLogs(data);
         
         // Create a log entry
-        createLogEntry(
-            data.status === 'success' ? 'info' : 'error',
-            'automation_service',
-            `Automation '${data.automation?.name || automationId}' triggered: ${data.message || 'No details'}`
-        );
+        createLogEntry('info', `Automation '${data.name || 'Unknown'}' executed successfully`, data.result || data.message || 'Completed');
     })
     .catch(error => {
         console.error('Error triggering automation:', error);
-        showNotification('Failed to trigger automation', 'error');
+        
+        // Reset button state
+        if (btn) {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+        
+        // Show error in logs
+        createLogEntry('error', 'Automation execution failed', error.message);
+        
+        // Show error alert
+        alert('Failed to trigger automation. Please try again.');
     });
 }
 
-// Function to show automation logs modal
+// Function to show automation logs in modal
 function showAutomationLogs(data) {
-    const automationLogsModal = document.getElementById('automation-logs-modal');
-    if (!automationLogsModal) return;
+    const modal = document.getElementById('automation-logs-modal');
+    const overlay = document.getElementById('automation-logs-overlay');
     
-    const titleElement = automationLogsModal.querySelector('.modal-title');
-    if (titleElement) {
-        const automationName = data.automation?.name || 'Unknown Automation';
-        titleElement.textContent = `${automationName} Execution Log`;
-    }
+    if (!modal) return;
     
-    const contentElement = automationLogsModal.querySelector('.modal-content-inner');
-    if (contentElement) {
-        let html = '';
+    // Format logs based on the structured response format
+    const automationInfo = data.automation || {};
+    const automationName = automationInfo.name || 'Unknown Automation';
+    const automationDesc = automationInfo.description || '';
+    
+    // Extract result information
+    const resultStatus = data.status || 'unknown';
+    const resultMessage = data.message || 'No detailed information available';
+    
+    // Determine status class for styling
+    const statusClass = resultStatus === 'success' ? 'success' : 'error';
+    
+    // Get current timestamp
+    const timestamp = new Date().toLocaleString();
+    
+    // Update automation header information
+    document.getElementById('automation-name').textContent = automationName;
+    document.getElementById('automation-timestamp').textContent = `Executed: ${timestamp}`;
+    document.getElementById('automation-description').textContent = automationDesc;
+    
+    // Clear previous logs
+    const logsContainer = document.getElementById('execution-logs-container');
+    if (logsContainer) {
+        logsContainer.innerHTML = '';
         
-        // Add summary of execution
-        html += `<div class="logs-summary ${data.status}">
-            <div class="logs-status">${data.status === 'success' ? 'Successful' : 'Failed'}</div>
-            <div class="logs-message">${data.message || ''}</div>
-        </div>`;
+        // Process logs from the response
+        const logs = data.logs || [];
         
-        // Add individual log entries
-        html += '<div class="logs-entries">';
-        if (data.logs && data.logs.length > 0) {
-            data.logs.forEach(log => {
-                html += `<div class="log-entry ${log.level}">
-                    <span class="log-timestamp">${log.timestamp}</span>
-                    <span class="log-level ${log.level}">${log.level.toUpperCase()}</span>
-                    <span class="log-message">${log.message}</span>
-                </div>`;
+        if (logs.length > 0) {
+            logs.forEach(log => {
+                const logTime = log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+                const logLevel = log.level || 'info';
+                const logMessage = log.message || '';
+                
+                const logItem = document.createElement('div');
+                logItem.className = `log-item log-${logLevel}`;
+                logItem.innerHTML = `
+                    <span class="log-time">${logTime}</span>
+                    <span class="log-level">${logLevel}</span>
+                    <span class="log-message">${logMessage}</span>
+                `;
+                logsContainer.appendChild(logItem);
             });
         } else {
-            html += '<div class="log-entry">No detailed logs available</div>';
+            // Add a default log message if no logs provided
+            const defaultLog = document.createElement('div');
+            defaultLog.className = 'log-item log-info';
+            defaultLog.innerHTML = `
+                <span class="log-time">${new Date().toLocaleTimeString()}</span>
+                <span class="log-level">info</span>
+                <span class="log-message">Automation execution triggered</span>
+            `;
+            logsContainer.appendChild(defaultLog);
         }
-        html += '</div>';
-        
-        // Add raw response section if available
+    }
+    
+    // Update status display
+    const responseStatus = document.getElementById('response-status');
+    if (responseStatus) {
+        responseStatus.className = `status-${statusClass}`;
+        responseStatus.textContent = `(${resultStatus.toUpperCase()})`;
+    }
+    
+    // Update response data
+    const responseData = document.getElementById('api-response-data');
+    if (responseData) {
         if (data.raw_response) {
-            html += '<div class="logs-raw-response">';
-            html += '<h4>Response Data</h4>';
-            html += '<pre>' + JSON.stringify(data.raw_response, null, 2) + '</pre>';
-            html += '</div>';
+            let rawResponseData = '';
+            try {
+                // Try to prettify JSON if it's an object
+                if (typeof data.raw_response === 'object') {
+                    rawResponseData = JSON.stringify(data.raw_response, null, 2);
+                } else {
+                    rawResponseData = String(data.raw_response);
+                }
+            } catch (e) {
+                rawResponseData = String(data.raw_response);
+            }
+            responseData.textContent = rawResponseData;
+        } else {
+            responseData.textContent = resultMessage || 'No response data available';
         }
-        
-        contentElement.innerHTML = html;
     }
     
     // Show the modal
-    automationLogsModal.style.display = 'block';
+    modal.style.display = 'block';
+    if (overlay) overlay.style.display = 'block';
+    
+    // Add event listeners to close buttons
+    const closeButtons = modal.querySelectorAll('.modal-close, .modal-close-btn');
+    closeButtons.forEach(btn => {
+        btn.onclick = function() {
+            modal.style.display = 'none';
+            if (overlay) overlay.style.display = 'none';
+        };
+    });
 }
 
-// Function to show datasource logs modal
+// Function to show datasource logs in a modal
 function showDatasourceLogs(data) {
-    const datasourceLogsModal = document.getElementById('datasource-logs-modal');
-    if (!datasourceLogsModal) return;
+    // Reuse the automation logs modal with different content
+    const modal = document.getElementById('automation-logs-modal');
+    const overlay = document.getElementById('automation-logs-overlay');
     
-    const titleElement = datasourceLogsModal.querySelector('.modal-title');
-    if (titleElement) {
-        const datasourceName = data.datasource?.name || 'Unknown Data Source';
-        titleElement.textContent = `${datasourceName} Query Log`;
-    }
+    if (!modal) return;
     
-    const contentElement = datasourceLogsModal.querySelector('.modal-content-inner');
-    if (contentElement) {
-        let html = '';
+    // Format logs based on the structured response format
+    const datasourceInfo = data.datasource || {};
+    const datasourceName = datasourceInfo.name || 'Unknown Data Source';
+    const datasourceEndpoint = datasourceInfo.endpoint || '';
+    
+    // Extract result information
+    const resultStatus = data.status || 'unknown';
+    const resultMessage = data.message || 'No detailed information available';
+    
+    // Determine status class for styling
+    const statusClass = resultStatus === 'success' ? 'success' : 'error';
+    
+    // Get current timestamp
+    const timestamp = new Date().toLocaleString();
+    
+    // Update automation header information - reusing the automation modal elements
+    document.getElementById('automation-name').textContent = datasourceName;
+    document.getElementById('automation-timestamp').textContent = `Queried: ${timestamp}`;
+    document.getElementById('automation-description').textContent = `Endpoint: ${datasourceEndpoint}`;
+    
+    // Update modal title
+    const modalTitle = document.querySelector('#automation-logs-modal .modal-title');
+    if (modalTitle) modalTitle.textContent = 'Data Source Query Logs';
+    
+    // Clear previous logs
+    const logsContainer = document.getElementById('execution-logs-container');
+    if (logsContainer) {
+        logsContainer.innerHTML = '';
         
-        // Add summary of execution
-        html += `<div class="logs-summary ${data.status}">
-            <div class="logs-status">${data.status === 'success' ? 'Successful' : 'Failed'}</div>
-            <div class="logs-message">${data.message || ''}</div>
-        </div>`;
+        // Process logs from the response
+        const logs = data.logs || [];
         
-        // Add individual log entries
-        html += '<div class="logs-entries">';
-        if (data.logs && data.logs.length > 0) {
-            data.logs.forEach(log => {
-                html += `<div class="log-entry ${log.level}">
-                    <span class="log-timestamp">${log.timestamp}</span>
-                    <span class="log-level ${log.level}">${log.level.toUpperCase()}</span>
-                    <span class="log-message">${log.message}</span>
-                </div>`;
+        if (logs.length > 0) {
+            logs.forEach(log => {
+                const logTime = log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+                const logLevel = log.level || 'info';
+                const logMessage = log.message || '';
+                
+                const logItem = document.createElement('div');
+                logItem.className = `log-item log-${logLevel}`;
+                logItem.innerHTML = `
+                    <span class="log-time">${logTime}</span>
+                    <span class="log-level">${logLevel}</span>
+                    <span class="log-message">${logMessage}</span>
+                `;
+                logsContainer.appendChild(logItem);
             });
         } else {
-            html += '<div class="log-entry">No detailed logs available</div>';
+            // Add a default log message if no logs provided
+            const defaultLog = document.createElement('div');
+            defaultLog.className = 'log-item log-info';
+            defaultLog.innerHTML = `
+                <span class="log-time">${new Date().toLocaleTimeString()}</span>
+                <span class="log-level">info</span>
+                <span class="log-message">Data source query executed</span>
+            `;
+            logsContainer.appendChild(defaultLog);
         }
-        html += '</div>';
-        
-        // Add raw response section if available
+    }
+    
+    // Update status display
+    const responseStatus = document.getElementById('response-status');
+    if (responseStatus) {
+        responseStatus.className = `status-${statusClass}`;
+        responseStatus.textContent = `(${resultStatus.toUpperCase()})`;
+    }
+    
+    // Update response data
+    const responseData = document.getElementById('api-response-data');
+    if (responseData) {
         if (data.raw_response) {
-            html += '<div class="logs-raw-response">';
-            html += '<h4>Response Data</h4>';
-            html += '<pre>' + JSON.stringify(data.raw_response, null, 2) + '</pre>';
-            html += '</div>';
+            let rawResponseData = '';
+            try {
+                // Try to prettify JSON if it's an object
+                if (typeof data.raw_response === 'object') {
+                    rawResponseData = JSON.stringify(data.raw_response, null, 2);
+                } else {
+                    rawResponseData = String(data.raw_response);
+                }
+            } catch (e) {
+                rawResponseData = String(data.raw_response);
+            }
+            responseData.textContent = rawResponseData;
+        } else {
+            responseData.textContent = resultMessage || 'No response data available';
         }
-        
-        contentElement.innerHTML = html;
     }
     
     // Show the modal
-    datasourceLogsModal.style.display = 'block';
+    modal.style.display = 'block';
+    if (overlay) overlay.style.display = 'block';
+    
+    // Add event listeners to close buttons
+    const closeButtons = modal.querySelectorAll('.modal-close, .modal-close-btn');
+    closeButtons.forEach(btn => {
+        btn.onclick = function() {
+            modal.style.display = 'none';
+            if (overlay) overlay.style.display = 'none';
+            
+            // Reset title back to "Automation Logs" for future automation uses
+            if (modalTitle) modalTitle.textContent = 'Automation Logs';
+        };
+    });
 }
 
 // Function to create a log entry
@@ -1319,7 +1397,7 @@ function createLogEntry(level, source, message) {
         return response.json();
     })
     .then(() => {
-        // Reload logs
+        // Refresh logs
         loadLogs();
     })
     .catch(error => {
@@ -1327,12 +1405,15 @@ function createLogEntry(level, source, message) {
     });
 }
 
-// Function to load dashboards from API
+// Function to load dashboards
 function loadDashboards() {
+    const dashboardsList = document.getElementById('dashboards-list');
+    if (!dashboardsList) return;
+
     fetch('/api/dashboards/')
         .then(response => {
             if (!response.ok) {
-                throw new Error('Failed to load dashboards');
+                throw new Error('Network response was not ok');
             }
             return response.json();
         })
@@ -1341,100 +1422,73 @@ function loadDashboards() {
         })
         .catch(error => {
             console.error('Error loading dashboards:', error);
-            const dashboardsContainer = document.getElementById('dashboards-list');
-            if (dashboardsContainer) {
-                dashboardsContainer.innerHTML = '<div class="error">Failed to load dashboards</div>';
-            }
+            dashboardsList.innerHTML = '<div class="loading-error">Failed to load dashboards. Please try again.</div>';
         });
 }
 
-// Function to update recommended dashboards
-function updateRecommendedDashboards(dashboardIds) {
-    // First get all dashboards
-    fetch('/api/dashboards/')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to load dashboards');
-            }
-            return response.json();
-        })
-        .then(dashboards => {
-            // Filter to just recommended ones
-            const recommendedDashboards = dashboards.filter(dashboard => 
-                dashboardIds.includes(dashboard.id)
-            );
-            
-            // Render the recommended dashboards
-            const container = document.getElementById('recommendations-dashboards');
-            if (!container) return;
-            
-            if (recommendedDashboards.length === 0) {
-                container.innerHTML = '<div class="empty-state">No recommended dashboards</div>';
-                return;
-            }
-            
-            let html = '';
-            recommendedDashboards.forEach(dashboard => {
-                html += `
-                    <div class="recommendation-item dashboard-item" data-id="${dashboard.id}">
-                        <div class="recommendation-icon"><i class="fas fa-chart-line"></i></div>
-                        <div class="recommendation-details">
-                            <div class="recommendation-title">${dashboard.name}</div>
-                            <div class="recommendation-description">${dashboard.description}</div>
-                        </div>
-                        <a href="${dashboard.link}" target="_blank" class="visit-dashboard-btn" aria-label="Open Dashboard">
-                            <i class="fas fa-external-link-alt"></i>
-                        </a>
-                    </div>
-                `;
-            });
-            
-            container.innerHTML = html;
-        })
-        .catch(error => {
-            console.error('Error updating recommended dashboards:', error);
-            const container = document.getElementById('recommendations-dashboards');
-            if (container) {
-                container.innerHTML = '<div class="error">Failed to load recommended dashboards</div>';
-            }
-        });
-}
+// Function to update recommended dashboards based on incident selection
+function updateRecommendedDashboards(dashboards) {
+    const dashboardsList = document.getElementById('dashboards-list');
+    if (!dashboardsList) return;
 
-// Function to render dashboards list
-function renderDashboardsList(dashboards) {
-    const dashboardsContainer = document.getElementById('dashboards-list');
-    if (!dashboardsContainer) return;
-
+    // If no recommended dashboards, show message
     if (!dashboards || dashboards.length === 0) {
-        dashboardsContainer.innerHTML = '<div class="empty-state">No dashboards available</div>';
+        dashboardsList.innerHTML = '<div class="empty-state">No relevant dashboards found for this incident</div>';
+        return;
+    }
+
+    let html = '<h4>Recommended Dashboards</h4>';dashboards.forEach(dashboard => {
+        html += `
+            <div class="dashboard-item recommended">
+                <div class="dashboard-name">${dashboard.name}</div>
+                <div class="dashboard-description">${dashboard.description}</div>
+                <a href="${dashboard.link}" target="_blank" class="dashboard-link">Open Dashboard <i data-feather="external-link"></i></a>
+            </div>
+        `;
+    });
+
+    dashboardsList.innerHTML = html;
+
+    // Initialize feather icons
+    feather.replace();
+}
+
+// Function to render the dashboards list
+function renderDashboardsList(dashboards) {
+    const dashboardsList = document.getElementById('dashboards-list');
+    if (!dashboardsList) return;
+
+    if (dashboards.length === 0) {
+        dashboardsList.innerHTML = '<div class="empty-state">No dashboards available</div>';
         return;
     }
 
     let html = '';
     dashboards.forEach(dashboard => {
         html += `
-            <div class="dashboard-item" data-id="${dashboard.id}">
-                <div class="dashboard-icon"><i class="fas fa-chart-line"></i></div>
-                <div class="dashboard-details">
-                    <div class="dashboard-title">${dashboard.name}</div>
-                    <div class="dashboard-description">${dashboard.description}</div>
-                </div>
-                <a href="${dashboard.link}" target="_blank" class="visit-dashboard-btn" aria-label="Open Dashboard">
-                    <i class="fas fa-external-link-alt"></i>
-                </a>
+            <div class="dashboard-item">
+                <div class="dashboard-name">${dashboard.name}</div>
+                <div class="dashboard-description">${dashboard.description}</div>
+                <a href="${dashboard.link}" target="_blank" class="dashboard-link">Open Dashboard <i data-feather="external-link"></i></a>
             </div>
         `;
     });
 
-    dashboardsContainer.innerHTML = html;
+    dashboardsList.innerHTML = html;
+
+    // Initialize feather icons
+    feather.replace();
 }
 
-// Function to load logs from API
+// Function to load logs for the recommendations column
 function loadLogs() {
+    const logsList = document.getElementById('logs-list');
+    if (!logsList) return;
+
     fetch('/api/logs/')
         .then(response => {
             if (!response.ok) {
-                throw new Error('Failed to load logs');
+                throw new Error('Network response was not ok');
             }
             return response.json();
         })
@@ -1443,43 +1497,36 @@ function loadLogs() {
         })
         .catch(error => {
             console.error('Error loading logs:', error);
-            const logsContainer = document.getElementById('logs-list');
-            if (logsContainer) {
-                logsContainer.innerHTML = '<div class="error">Failed to load logs</div>';
-            }
+            logsList.innerHTML = '<div class="loading-error">Failed to load logs. Please try again.</div>';
         });
 }
 
-// Function to render logs list
+// Function to render the logs list
 function renderLogsList(logs) {
-    const logsContainer = document.getElementById('logs-list');
-    if (!logsContainer) return;
+    const logsList = document.getElementById('logs-list');
+    if (!logsList) return;
 
-    if (!logs || logs.length === 0) {
-        logsContainer.innerHTML = '<div class="empty-state">No logs available</div>';
+    if (logs.length === 0) {
+        logsList.innerHTML = '<div class="empty-state">No logs available</div>';
         return;
     }
 
-    // Limit to most recent logs
-    const recentLogs = logs.slice(0, 50); // Show last 50 logs
-    
     let html = '';
-    recentLogs.forEach(log => {
-        const timestamp = new Date(log.timestamp).toLocaleString();
+    logs.forEach(log => {
+        const logClass = `log-${log.level.toLowerCase()}`;
         html += `
-            <div class="log-item ${log.level}">
-                <div class="log-timestamp">${timestamp}</div>
-                <div class="log-level">${log.level.toUpperCase()}</div>
-                <div class="log-source">[${log.source}]</div>
+            <div class="log-item ${logClass}">
+                <div class="log-timestamp">${new Date(log.timestamp).toLocaleString()}</div>
+                <div class="log-source">${log.source}</div>
                 <div class="log-message">${log.message}</div>
             </div>
         `;
     });
 
-    logsContainer.innerHTML = html;
+    logsList.innerHTML = html;
 }
 
-// Function to set up modal behavior
+// Function to set up all the modal functionality
 function setupModals() {
     // Get all modals
     const modals = document.querySelectorAll('.modal');
@@ -1544,26 +1591,32 @@ function setupModals() {
                 }
                 return response.json();
             })
-            .then(data => {
-                statusDiv.innerHTML = '<div class="success">Document uploaded successfully!</div>';
-                
-                // Reset form and close modal after 2 seconds
+            .then(result => {
+                statusDiv.innerHTML = `<div class="success">Document uploaded successfully!</div>`;
+
+                // Close the modal after a short delay
                 setTimeout(() => {
-                    this.reset();
-                    const modal = document.getElementById('upload-document-modal');
-                    if (modal) {
-                        modal.style.display = 'none';
-                    }
-                    statusDiv.innerHTML = '';
-                    
-                    // Reload documents list
+                    document.getElementById('upload-modal').style.display = 'none';
+
+                    // Reload the documents list
                     loadDocuments();
-                }, 2000);
+                }, 1500);
             })
             .catch(error => {
                 console.error('Error uploading document:', error);
-                statusDiv.innerHTML = '<div class="error">Failed to upload document. Please try again.</div>';
+                statusDiv.innerHTML = `<div class="error">Failed to upload document. Please try again.</div>`;
             });
+        });
+    }
+
+    // Set up upload document button
+    const uploadBtn = document.getElementById('upload-document-btn');
+    if (uploadBtn) {
+        uploadBtn.addEventListener('click', function() {
+            const uploadModal = document.getElementById('upload-modal');
+            if (uploadModal) {
+                uploadModal.style.display = 'block';
+            }
         });
     }
 
@@ -1577,47 +1630,15 @@ function setupModals() {
             const incidentId = statusModal.dataset.incidentId;
             const newStatus = statusModal.dataset.newStatus;
             const comments = document.getElementById('status-comments').value;
-            
-            // Show a loading indication in the button
-            const submitBtn = this.querySelector('button[type="submit"]');
-            const originalBtnText = submitBtn.textContent;
-            submitBtn.textContent = 'Updating...';
-            submitBtn.disabled = true;
 
-            // Call the update function and handle modal closing after successful update
-            updateIncidentStatus(incidentId, newStatus, comments)
-                .then(() => {
-                    // Close the modal on success
-                    statusModal.style.display = 'none';
-                    
-                    // Clear the comments field for next time
-                    document.getElementById('status-comments').value = '';
-                })
-                .catch(error => {
-                    console.error('Error in modal form submission:', error);
-                    // Show error message in the modal
-                    const errorMsg = document.createElement('div');
-                    errorMsg.className = 'status-update-error';
-                    errorMsg.textContent = 'Failed to update incident. Please try again.';
-                    errorMsg.style.color = 'red';
-                    errorMsg.style.marginBottom = '10px';
-                    
-                    // Add the error message to the form
-                    const formActions = this.querySelector('.form-actions');
-                    formActions.insertAdjacentElement('beforebegin', errorMsg);
-                    
-                    // Remove error message after 3 seconds
-                    setTimeout(() => {
-                        if (errorMsg.parentNode) {
-                            errorMsg.parentNode.removeChild(errorMsg);
-                        }
-                    }, 3000);
-                })
-                .finally(() => {
-                    // Reset button state
-                    submitBtn.textContent = originalBtnText;
-                    submitBtn.disabled = false;
-                });
+            // Call the update function
+            updateIncidentStatus(incidentId, newStatus, comments);
+
+            // Close the modal
+            statusModal.style.display = 'none';
+
+            // Clear the comments field for next time
+            document.getElementById('status-comments').value = '';
         });
     }
 
@@ -1641,68 +1662,74 @@ function setupModals() {
 
 // Function to clear all conversations
 async function clearAllConversations() {
-    if (!confirm('Are you sure you want to delete ALL conversations? This cannot be undone.')) {
+    if (!confirm('Are you sure you want to delete all conversations? This action cannot be undone.')) {
         return;
     }
-    
+
     try {
         const response = await fetch('/api/conversations/clear/', {
-            method: 'POST',
+            method: 'DELETE',
             headers: {
+                'Content-Type': 'application/json',
                 'X-CSRFToken': getCSRFToken()
             }
         });
-        
+
         if (!response.ok) {
             throw new Error('Failed to clear conversations');
         }
-        
-        // Show success notification
-        showNotification('All conversations cleared successfully', 'success');
-        
-        // Reset current conversation ID
-        currentConversationId = null;
-        
+
+        const result = await response.json();
+        showNotification(result.message || 'All conversations cleared successfully', 'success');
+
         // Reload conversations
-        await loadConversations();
-        
-        // Clear chat messages
+        loadConversations();
+
+        // Clear current conversation view
         const chatMessages = document.getElementById('chat-messages');
         if (chatMessages) {
             chatMessages.innerHTML = '<div class="empty-state">No messages yet. Start the conversation!</div>';
         }
+
+        const titleElement = document.getElementById('current-conversation-title');
+        if (titleElement) {
+            titleElement.textContent = 'Select or create a conversation';
+        }
+
+        currentConversationId = null;
     } catch (error) {
         console.error('Error clearing conversations:', error);
-        showNotification('Failed to clear conversations. Please try again.', 'error');
+        showNotification('Failed to clear conversations: ' + error.message, 'error');
     }
 }
 
 // Function to clear all documents
 async function clearAllDocuments() {
-    if (!confirm('Are you sure you want to delete ALL documents? This cannot be undone.')) {
+    if (!confirm('Are you sure you want to delete all documents? This action cannot be undone.')) {
         return;
     }
-    
+
     try {
         const response = await fetch('/api/documents/clear/', {
-            method: 'POST',
+            method: 'DELETE',
             headers: {
+                'Content-Type': 'application/json',
                 'X-CSRFToken': getCSRFToken()
             }
         });
-        
+
         if (!response.ok) {
             throw new Error('Failed to clear documents');
         }
-        
-        // Show success notification
-        showNotification('All documents cleared successfully', 'success');
-        
+
+        const result = await response.json();
+        showNotification(result.message || 'All documents cleared successfully', 'success');
+
         // Reload documents
-        await loadDocuments();
+        loadDocuments();
     } catch (error) {
         console.error('Error clearing documents:', error);
-        showNotification('Failed to clear documents. Please try again.', 'error');
+        showNotification('Failed to clear documents: ' + error.message, 'error');
     }
 }
 
@@ -1710,278 +1737,296 @@ async function clearAllDocuments() {
 async function loadKnowledgeBase() {
     try {
         const response = await fetch('/api/knowledge-base/');
-        if (!response.ok) {
-            throw new Error('Failed to load knowledge base entries');
-        }
-
         const entries = await response.json();
-        renderKnowledgeBaseList(entries);
+
+        const kbList = document.getElementById('knowledge-base-list');
+        kbList.innerHTML = '';
+
+        // Group entries by category
+        const entriesByCategory = {};
+        entries.forEach(entry => {
+            const category = entry.category || 'Uncategorized';
+            if (!entriesByCategory[category]) {
+                entriesByCategory[category] = [];
+            }
+            entriesByCategory[category].push(entry);
+        });
+
+        // Create sections for each category
+        Object.keys(entriesByCategory).sort().forEach(category => {
+            const categoryHeading = document.createElement('div');
+            categoryHeading.className = 'kb-category-heading';
+            categoryHeading.textContent = category;
+            kbList.appendChild(categoryHeading);
+
+            entriesByCategory[category].forEach(entry => {
+                const entryElement = document.createElement('div');
+                entryElement.className = 'kb-entry';
+                entryElement.innerHTML = `
+                    <div class="kb-entry-header">
+                        <h4 class="kb-entry-title">${entry.title}</h4>
+                        <div class="kb-entry-actions">
+                            <button onclick="editKnowledgeBaseEntry('${entry.id}')" class="icon-btn">
+                                <i data-feather="edit-2"></i>
+                            </button>
+                            <button onclick="deleteKnowledgeBaseEntry('${entry.id}')" class="icon-btn">
+                                <i data-feather="trash-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="kb-entry-preview">${entry.content.substring(0, 100)}...</div>
+                `;
+
+                entryElement.addEventListener('click', (e) => {
+                    if (!e.target.closest('.icon-btn')) {
+                        viewKnowledgeBaseEntry(entry.id);
+                    }
+                });
+
+                kbList.appendChild(entryElement);
+            });
+        });
+
+        feather.replace();
     } catch (error) {
         console.error('Error loading knowledge base:', error);
-        const kbContainer = document.getElementById('knowledge-base-list');
-        if (kbContainer) {
-            kbContainer.innerHTML = '<div class="error">Failed to load knowledge base</div>';
-        }
+        showNotification('Error loading knowledge base: ' + error.message, 'error');
     }
 }
 
-// Function to render knowledge base list
+// Function to render knowledge base entries
 function renderKnowledgeBaseList(entries) {
-    const kbContainer = document.getElementById('knowledge-base-list');
-    if (!kbContainer) return;
+    const knowledgeBaseList = document.getElementById('knowledge-base-list');
+    if (!knowledgeBaseList) return;
 
-    if (!entries || entries.length === 0) {
-        kbContainer.innerHTML = '<div class="empty-state">No knowledge base entries</div>';
+    if (entries.length === 0) {
+        knowledgeBaseList.innerHTML = '<div class="empty-state">No knowledge base entries available</div>';
         return;
     }
 
     let html = '';
     entries.forEach(entry => {
-        html += `
-            <div class="kb-item" data-id="${entry.id}">
-                <div class="kb-icon"><i class="fas fa-book"></i></div>
-                <div class="kb-details">
-                    <div class="kb-title">${entry.title}</div>
-                    <div class="kb-category">${entry.category || 'General'}</div>
-                </div>
-                <div class="kb-actions">
-                    <button class="kb-view-btn" data-id="${entry.id}" aria-label="View Entry">
-                        <i class="fas fa-eye"></i>
+        html += `<div class="kb-entry" data-id="${entry.id}">
+            <div class="kb-entry-header">
+                <h5 class="kb-entry-title">${entry.title}</h5>
+                <div class="kb-entry-actions">
+                    <button class="kb-edit-btn icon-btn" data-id="${entry.id}" title="Edit entry">
+                        <i data-feather="edit-2"></i>
                     </button>
-                    <button class="kb-edit-btn" data-id="${entry.id}" aria-label="Edit Entry">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="kb-delete-btn" data-id="${entry.id}" aria-label="Delete Entry">
-                        <i class="fas fa-trash"></i>
+                    <button class="kb-delete-btn icon-btn" data-id="${entry.id}" title="Delete entry">
+                        <i data-feather="trash-2"></i>
                     </button>
                 </div>
             </div>
-        `;
+            <div class="kb-entry-category">Category: ${entry.category || 'Uncategorized'}</div>
+            <div class="kb-entry-preview">${entry.content}</div>
+        </div>`;
     });
 
-    kbContainer.innerHTML = html;
+    knowledgeBaseList.innerHTML = html;
 
-    // Add event listeners
-    kbContainer.querySelectorAll('.kb-view-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const entryId = this.dataset.id;
-            viewKnowledgeBaseEntry(entryId);
+    // Initialize feather icons
+    feather.replace();
+
+    // Add event listeners for edit and delete buttons
+    document.querySelectorAll('.kb-edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute('data-id');
+            editKnowledgeBaseEntry(id);
         });
     });
 
-    kbContainer.querySelectorAll('.kb-edit-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const entryId = this.dataset.id;
-            editKnowledgeBaseEntry(entryId);
+    document.querySelectorAll('.kb-delete-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute('data-id');
+            deleteKnowledgeBaseEntry(id);
         });
     });
 
-    kbContainer.querySelectorAll('.kb-delete-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const entryId = this.dataset.id;
-            if (confirm('Are you sure you want to delete this knowledge base entry?')) {
-                deleteKnowledgeBaseEntry(entryId);
-            }
+    // Add event listeners for entry clicks (to view full content)
+    document.querySelectorAll('.kb-entry').forEach(entry => {
+        entry.addEventListener('click', () => {
+            const id = entry.getAttribute('data-id');
+            viewKnowledgeBaseEntry(id);
         });
     });
 }
 
 // Function to create a new knowledge base entry
 async function createKnowledgeBaseEntry() {
-    const kbModal = document.getElementById('knowledge-base-modal');
-    if (!kbModal) return;
-    
-    // Reset form
-    const kbForm = document.getElementById('knowledge-base-form');
-    if (kbForm) {
-        kbForm.reset();
-        
-        // Set attributes for create mode
-        kbForm.dataset.mode = 'create';
-        kbForm.dataset.entryId = '';
-        
-        // Update modal title
-        const modalTitle = kbModal.querySelector('.modal-title');
-        if (modalTitle) {
-            modalTitle.textContent = 'Create Knowledge Base Entry';
-        }
+    // Show modal with form
+    const modal = document.getElementById('kb-modal');
+    const overlay = document.getElementById('kb-overlay');
+    const form = document.getElementById('kb-form');
+    const modalTitle = document.getElementById('kb-modal-title');
+
+    if (!modal || !overlay || !form || !modalTitle) {
+        showNotification('Knowledge base modal not found', 'error');
+        return;
     }
-    
-    // Show the modal
-    kbModal.style.display = 'block';
+
+    // Reset form and set title for create mode
+    form.reset();
+    modalTitle.textContent = 'Create Knowledge Base Entry';
+    form.setAttribute('data-mode', 'create');
+    form.removeAttribute('data-id');
+
+    // Show modal
+    modal.style.display = 'block';
+    overlay.style.display = 'block';
+
+    // Focus on title input
+    setTimeout(() => {
+        document.getElementById('kb-title-input').focus();
+    }, 100);
 }
 
-// Function to edit a knowledge base entry
+// Function to edit an existing knowledge base entry
 async function editKnowledgeBaseEntry(id) {
+    // Fetch entry details
     try {
         const response = await fetch(`/api/knowledge-base/${id}/`);
         if (!response.ok) {
-            throw new Error('Failed to fetch knowledge base entry');
+            throw new Error('Failed to load knowledge base entry');
         }
-        
+
         const entry = await response.json();
-        
-        const kbModal = document.getElementById('knowledge-base-modal');
-        if (!kbModal) return;
-        
-        // Fill form fields
-        const titleField = document.getElementById('kb-title');
-        const categoryField = document.getElementById('kb-category');
-        const contentField = document.getElementById('kb-content');
-        const tagsField = document.getElementById('kb-tags');
-        
-        if (titleField) titleField.value = entry.title;
-        if (categoryField) categoryField.value = entry.category || '';
-        if (contentField) contentField.value = entry.content;
-        if (tagsField) tagsField.value = Array.isArray(entry.tags) ? entry.tags.join(', ') : '';
-        
-        // Set form mode to edit
-        const kbForm = document.getElementById('knowledge-base-form');
-        if (kbForm) {
-            kbForm.dataset.mode = 'edit';
-            kbForm.dataset.entryId = id;
-            
-            // Update modal title
-            const modalTitle = kbModal.querySelector('.modal-title');
-            if (modalTitle) {
-                modalTitle.textContent = 'Edit Knowledge Base Entry';
-            }
+
+        // Show modal with form
+        const modal = document.getElementById('kb-modal');
+        const overlay = document.getElementById('kb-overlay');
+        const form = document.getElementById('kb-form');
+        const modalTitle = document.getElementById('kb-modal-title');
+
+        if (!modal || !overlay || !form || !modalTitle) {
+            showNotification('Knowledge base modal not found', 'error');
+            return;
         }
-        
-        // Show the modal
-        kbModal.style.display = 'block';
+
+        // Fill form with entry data
+        document.getElementById('kb-title-input').value = entry.title;
+        document.getElementById('kb-category-input').value = entry.category || '';
+        document.getElementById('kb-content-input').value = entry.content;
+
+        // Set form mode and ID
+        modalTitle.textContent = 'Edit Knowledge Base Entry';
+        form.setAttribute('data-mode', 'edit');
+        form.setAttribute('data-id', id);
+
+        // Show modal
+        modal.style.display = 'block';
+        overlay.style.display = 'block';
+
     } catch (error) {
-        console.error('Error fetching knowledge base entry:', error);
-        showNotification('Failed to load knowledge base entry', 'error');
+        console.error('Error loading knowledge base entry:', error);
+        showNotification('Error loading knowledge base entry: ' + error.message, 'error');
     }
 }
 
 // Function to view a knowledge base entry
 async function viewKnowledgeBaseEntry(id) {
+    // Fetch entry details
     try {
         const response = await fetch(`/api/knowledge-base/${id}/`);
         if (!response.ok) {
-            throw new Error('Failed to fetch knowledge base entry');
+            throw new Error('Failed to load knowledge base entry');
         }
-        
+
         const entry = await response.json();
-        
-        const kbViewModal = document.getElementById('knowledge-base-view-modal');
-        if (!kbViewModal) return;
-        
-        // Fill content
-        const titleElement = kbViewModal.querySelector('.kb-view-title');
-        const categoryElement = kbViewModal.querySelector('.kb-view-category');
-        const contentElement = kbViewModal.querySelector('.kb-view-content');
-        const tagsElement = kbViewModal.querySelector('.kb-view-tags');
-        
-        if (titleElement) titleElement.textContent = entry.title;
-        if (categoryElement) categoryElement.textContent = entry.category || 'General';
-        if (contentElement) contentElement.textContent = entry.content;
-        
-        if (tagsElement) {
-            if (Array.isArray(entry.tags) && entry.tags.length > 0) {
-                tagsElement.innerHTML = entry.tags.map(tag => 
-                    `<span class="kb-tag">${tag}</span>`
-                ).join('');
-            } else {
-                tagsElement.innerHTML = '<em>No tags</em>';
-            }
+
+        // Show modal with entry details
+        const modal = document.getElementById('kb-view-modal');
+        const overlay = document.getElementById('kb-view-overlay');
+
+        if (!modal || !overlay) {
+            showNotification('Knowledge base view modal not found', 'error');
+            return;
         }
-        
-        // Show the modal
-        kbViewModal.style.display = 'block';
+
+        // Fill modal with entry data
+        document.getElementById('kb-view-title').textContent = entry.title;
+        document.getElementById('kb-view-category').textContent = entry.category || 'Uncategorized';
+        document.getElementById('kb-view-content').textContent = entry.content;
+
+        // Show modal
+        modal.style.display = 'block';
+        overlay.style.display = 'block';
+
     } catch (error) {
-        console.error('Error fetching knowledge base entry:', error);
-        showNotification('Failed to load knowledge base entry', 'error');
+        console.error('Error loading knowledge base entry:', error);
+        showNotification('Error loading knowledge base entry: ' + error.message, 'error');
     }
 }
 
 // Function to save a knowledge base entry
 async function saveKnowledgeBaseEntry(form) {
-    const mode = form.dataset.mode;
-    const entryId = form.dataset.entryId;
-    
-    const titleField = document.getElementById('kb-title');
-    const categoryField = document.getElementById('kb-category');
-    const contentField = document.getElementById('kb-content');
-    const tagsField = document.getElementById('kb-tags');
-    
-    if (!titleField || !contentField) {
-        showNotification('Missing required fields', 'error');
-        return;
-    }
-    
-    const title = titleField.value.trim();
-    const content = contentField.value.trim();
-    
+    const mode = form.getAttribute('data-mode');
+    const id = form.getAttribute('data-id');
+
+    const title = document.getElementById('kb-title-input').value.trim();
+    const category = document.getElementById('kb-category-input').value.trim();
+    const content = document.getElementById('kb-content-input').value.trim();
+
     if (!title || !content) {
         showNotification('Title and content are required', 'error');
         return;
     }
-    
-    const category = categoryField?.value.trim() || '';
-    const tagsInput = tagsField?.value.trim() || '';
-    
-    // Process tags - split by commas and trim whitespace
-    const tags = tagsInput ? tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
-    
-    // Prepare request data
-    const entryData = {
-        title: title,
-        content: content,
-        category: category,
-        tags: tags
+
+    const data = {
+        title,
+        category,
+        content
     };
-    
+
     try {
-        let response;
-        
-        if (mode === 'edit') {
-            // Update existing entry
-            response = await fetch(`/api/knowledge-base/${entryId}/`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRFToken()
-                },
-                body: JSON.stringify(entryData)
-            });
-        } else {
-            // Create new entry
-            response = await fetch('/api/knowledge-base/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRFToken()
-                },
-                body: JSON.stringify(entryData)
-            });
+        let url = '/api/knowledge-base/';
+        let method = 'POST';
+
+        if (mode === 'edit' && id) {
+            url = `/api/knowledge-base/${id}/`;
+            method = 'PUT';
         }
-        
+
+        const response = await fetch(url, {
+            method,
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
         if (!response.ok) {
-            throw new Error(`Failed to ${mode} knowledge base entry`);
+            throw new Error('Failed to save knowledge base entry');
         }
-        
+
         // Close modal
-        const kbModal = document.getElementById('knowledge-base-modal');
-        if (kbModal) {
-            kbModal.style.display = 'none';
-        }
-        
-        // Show success notification
+        const modal = document.getElementById('kb-modal');
+        const overlay = document.getElementById('kb-overlay');
+
+        if (modal) modal.style.display = 'none';
+        if (overlay) overlay.style.display = 'none';
+
+        // Reload knowledge base entries
+        loadKnowledgeBase();
+
+        // Show notification
         showNotification(`Knowledge base entry ${mode === 'edit' ? 'updated' : 'created'} successfully`, 'success');
-        
-        // Reload knowledge base
-        await loadKnowledgeBase();
+
     } catch (error) {
-        console.error(`Error ${mode}ing knowledge base entry:`, error);
-        showNotification(`Failed to ${mode} knowledge base entry`, 'error');
+        console.error('Error saving knowledge base entry:', error);
+        showNotification('Error saving knowledge base entry: ' + error.message, 'error');
     }
 }
 
 // Function to delete a knowledge base entry
 async function deleteKnowledgeBaseEntry(id) {
+    if (!confirm('Are you sure you want to delete this knowledge base entry? This cannot be undone.')) {
+        return;
+    }
+
     try {
         const response = await fetch(`/api/knowledge-base/${id}/`, {
             method: 'DELETE',
@@ -1989,126 +2034,1182 @@ async function deleteKnowledgeBaseEntry(id) {
                 'X-CSRFToken': getCSRFToken()
             }
         });
-        
+
         if (!response.ok) {
             throw new Error('Failed to delete knowledge base entry');
         }
-        
-        // Show success notification
+
+        // Reload knowledge base entries
+        loadKnowledgeBase();
+
+        // Show notification
         showNotification('Knowledge base entry deleted successfully', 'success');
-        
-        // Reload knowledge base
-        await loadKnowledgeBase();
+
     } catch (error) {
         console.error('Error deleting knowledge base entry:', error);
-        showNotification('Failed to delete knowledge base entry', 'error');
+        showNotification('Error deleting knowledge base entry: ' + error.message, 'error');
     }
 }
 
-// Function to toggle the knowledge base sidebar
-function toggleKnowledgeBase() {
-    const knowledgeBaseSection = document.getElementById('knowledge-base-section');
-    if (knowledgeBaseSection) {
-        const isOpen = knowledgeBaseSection.classList.contains('open');
-        if (isOpen) {
-            knowledgeBaseSection.classList.remove('open');
-        } else {
-            knowledgeBaseSection.classList.add('open');
-            // Load knowledge base when opening
-            loadKnowledgeBase();
+// Function to set up all the modal functionality
+function setupModals() {
+    // Get all modals
+    const modals = document.querySelectorAll('.modal');
+
+    // Get all close buttons
+    const closeButtons = document.querySelectorAll('.modal-close, .modal-close-btn');
+
+    // When the user clicks on a close button, close the parent modal
+    closeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const modal = this.closest('.modal');
+            if (modal) {
+                modal.style.display = 'none';
+
+                // Reset form if this is the status update modal
+                if (modal.id === 'status-update-modal') {
+                    const commentsField = document.getElementById('status-comments');
+                    if (commentsField) {
+                        commentsField.value = '';
+                    }
+                }
+            }
+        });
+    });
+
+    // When the user clicks anywhere outside of the modal content, close it
+    window.addEventListener('click', function(event) {
+        modals.forEach(modal => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+
+                // Reset form if this is the status update modal
+                if (modal.id === 'status-update-modal') {
+                    const commentsField = document.getElementById('status-comments');
+                    if (commentsField) {
+                        commentsField.value = '';
+                    }
+                }
+            }
+        });
+    });
+
+    // Set up document upload form
+    const uploadForm = document.getElementById('document-upload-form');
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const formData = new FormData(this);
+            const statusDiv = document.getElementById('upload-status');
+
+            fetch('/api/documents/upload/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(result => {
+                statusDiv.innerHTML = `<div class="success">Document uploaded successfully!</div>`;
+
+                // Close the modal after a short delay
+                setTimeout(() => {
+                    document.getElementById('upload-modal').style.display = 'none';
+
+                    // Reload the documents list
+                    loadDocuments();
+                }, 1500);
+            })
+            .catch(error => {
+                console.error('Error uploading document:', error);
+                statusDiv.innerHTML = `<div class="error">Failed to upload document. Please try again.</div>`;
+            });
+        });
+    }
+
+    // Set up upload document button
+    const uploadBtn = document.getElementById('upload-document-btn');
+    if (uploadBtn) {
+        uploadBtn.addEventListener('click', function() {
+            const uploadModal = document.getElementById('upload-modal');
+            if (uploadModal) {
+                uploadModal.style.display = 'block';
+            }
+        });
+    }
+
+    // Set up status update form submission
+    const updateCommentsForm = document.getElementById('update-comments-form');
+    if (updateCommentsForm) {
+        updateCommentsForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const statusModal = document.getElementById('status-update-modal');
+            const incidentId = statusModal.dataset.incidentId;
+            const newStatus = statusModal.dataset.newStatus;
+            const comments = document.getElementById('status-comments').value;
+
+            // Call the update function
+            updateIncidentStatus(incidentId, newStatus, comments);
+
+            // Close the modal
+            statusModal.style.display = 'none';
+
+            // Clear the comments field for next time
+            document.getElementById('status-comments').value = '';
+        });
+    }
+
+    // Set up cancel button for status update modal
+    const cancelUpdateBtn = document.getElementById('cancel-update-btn');
+    if (cancelUpdateBtn) {
+        cancelUpdateBtn.addEventListener('click', function() {
+            const statusModal = document.getElementById('status-update-modal');
+            if (statusModal) {
+                statusModal.style.display = 'none';
+
+                // Clear the comments field
+                const commentsField = document.getElementById('status-comments');
+                if (commentsField) {
+                    commentsField.value = '';
+                }
+            }
+        });
+    }
+}
+
+// Function to clear all conversations
+async function clearAllConversations() {
+    if (!confirm('Are you sure you want to delete all conversations? This action cannot be undone.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/conversations/clear/', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to clear conversations');
         }
+
+        const result = await response.json();
+        showNotification(result.message || 'All conversations cleared successfully', 'success');
+
+        // Reload conversations
+        loadConversations();
+
+        // Clear current conversation view
+        const chatMessages = document.getElementById('chat-messages');
+        if (chatMessages) {
+            chatMessages.innerHTML = '<div class="empty-state">No messages yet. Start the conversation!</div>';
+        }
+
+        const titleElement = document.getElementById('current-conversation-title');
+        if (titleElement) {
+            titleElement.textContent = 'Select or create a conversation';
+        }
+
+        currentConversationId = null;
+    } catch (error) {
+        console.error('Error clearing conversations:', error);
+        showNotification('Failed to clear conversations: ' + error.message, 'error');
     }
 }
 
-// Initialize the app when the DOM is loaded
+// Function to clear all documents
+async function clearAllDocuments() {
+    if (!confirm('Are you sure you want to delete all documents? This action cannot be undone.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/documents/clear/', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to clear documents');
+        }
+
+        const result = await response.json();
+        showNotification(result.message || 'All documents cleared successfully', 'success');
+
+        // Reload documents
+        loadDocuments();
+    } catch (error) {
+        console.error('Error clearing documents:', error);
+        showNotification('Failed to clear documents: ' + error.message, 'error');
+    }
+}
+
+// Function to load knowledge base entries
+async function loadKnowledgeBase() {
+    try {
+        const response = await fetch('/api/knowledge-base/');
+        const entries = await response.json();
+
+        const kbList = document.getElementById('knowledge-base-list');
+        kbList.innerHTML = '';
+
+        // Group entries by category
+        const entriesByCategory = {};
+        entries.forEach(entry => {
+            const category = entry.category || 'Uncategorized';
+            if (!entriesByCategory[category]) {
+                entriesByCategory[category] = [];
+            }
+            entriesByCategory[category].push(entry);
+        });
+
+        // Create sections for each category
+        Object.keys(entriesByCategory).sort().forEach(category => {
+            const categoryHeading = document.createElement('div');
+            categoryHeading.className = 'kb-category-heading';
+            categoryHeading.textContent = category;
+            kbList.appendChild(categoryHeading);
+
+            entriesByCategory[category].forEach(entry => {
+                const entryElement = document.createElement('div');
+                entryElement.className = 'kb-entry';
+                entryElement.innerHTML = `
+                    <div class="kb-entry-header">
+                        <h4 class="kb-entry-title">${entry.title}</h4>
+                        <div class="kb-entry-actions">
+                            <button onclick="editKnowledgeBaseEntry('${entry.id}')" class="icon-btn">
+                                <i data-feather="edit-2"></i>
+                            </button>
+                            <button onclick="deleteKnowledgeBaseEntry('${entry.id}')" class="icon-btn">
+                                <i data-feather="trash-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="kb-entry-preview">${entry.content.substring(0, 100)}...</div>
+                `;
+
+                entryElement.addEventListener('click', (e) => {
+                    if (!e.target.closest('.icon-btn')) {
+                        viewKnowledgeBaseEntry(entry.id);
+                    }
+                });
+
+                kbList.appendChild(entryElement);
+            });
+        });
+
+        feather.replace();
+    } catch (error) {
+        console.error('Error loading knowledge base:', error);
+        showNotification('Error loading knowledge base: ' + error.message, 'error');
+    }
+}
+
+// Function to render knowledge base entries
+function renderKnowledgeBaseList(entries) {
+    const knowledgeBaseList = document.getElementById('knowledge-base-list');
+    if (!knowledgeBaseList) return;
+
+    if (entries.length === 0) {
+        knowledgeBaseList.innerHTML = '<div class="empty-state">No knowledge base entries available</div>';
+        return;
+    }
+
+    let html = '';
+    entries.forEach(entry => {
+        html += `<div class="kb-entry" data-id="${entry.id}">
+            <div class="kb-entry-header">
+                <h5 class="kb-entry-title">${entry.title}</h5>
+                <div class="kb-entry-actions">
+                    <button class="kb-edit-btn icon-btn" data-id="${entry.id}" title="Edit entry">
+                        <i data-feather="edit-2"></i>
+                    </button>
+                    <button class="kb-delete-btn icon-btn" data-id="${entry.id}" title="Delete entry">
+                        <i data-feather="trash-2"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="kb-entry-category">Category: ${entry.category || 'Uncategorized'}</div>
+            <div class="kb-entry-preview">${entry.content}</div>
+        </div>`;
+    });
+
+    knowledgeBaseList.innerHTML = html;
+
+    // Initialize feather icons
+    feather.replace();
+
+    // Add event listeners for edit and delete buttons
+    document.querySelectorAll('.kb-edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute('data-id');
+            editKnowledgeBaseEntry(id);
+        });
+    });
+
+    document.querySelectorAll('.kb-delete-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute('data-id');
+            deleteKnowledgeBaseEntry(id);
+        });
+    });
+
+    // Add event listeners for entry clicks (to view full content)
+    document.querySelectorAll('.kb-entry').forEach(entry => {
+        entry.addEventListener('click', () => {
+            const id = entry.getAttribute('data-id');
+            viewKnowledgeBaseEntry(id);
+        });
+    });
+}
+
+// Function to create a new knowledge base entry
+async function createKnowledgeBaseEntry() {
+    // Show modal with form
+    const modal = document.getElementById('kb-modal');
+    const overlay = document.getElementById('kb-overlay');
+    const form = document.getElementById('kb-form');
+    const modalTitle = document.getElementById('kb-modal-title');
+
+    if (!modal || !overlay || !form || !modalTitle) {
+        showNotification('Knowledge base modal not found', 'error');
+        return;
+    }
+
+    // Reset form and set title for create mode
+    form.reset();
+    modalTitle.textContent = 'Create Knowledge Base Entry';
+    form.setAttribute('data-mode', 'create');
+    form.removeAttribute('data-id');
+
+    // Show modal
+    modal.style.display = 'block';
+    overlay.style.display = 'block';
+
+    // Focus on title input
+    setTimeout(() => {
+        document.getElementById('kb-title-input').focus();
+    }, 100);
+}
+
+// Function to edit an existing knowledge base entry
+async function editKnowledgeBaseEntry(id) {
+    // Fetch entry details
+    try {
+        const response = await fetch(`/api/knowledge-base/${id}/`);
+        if (!response.ok) {
+            throw new Error('Failed to load knowledge base entry');
+        }
+
+        const entry = await response.json();
+
+        // Show modal with form
+        const modal = document.getElementById('kb-modal');
+        const overlay = document.getElementById('kb-overlay');
+        const form = document.getElementById('kb-form');
+        const modalTitle = document.getElementById('kb-modal-title');
+
+        if (!modal || !overlay || !form || !modalTitle) {
+            showNotification('Knowledge base modal not found', 'error');
+            return;
+        }
+
+        // Fill form with entry data
+        document.getElementById('kb-title-input').value = entry.title;
+        document.getElementById('kb-category-input').value = entry.category || '';
+        document.getElementById('kb-content-input').value = entry.content;
+
+        // Set form mode and ID
+        modalTitle.textContent = 'Edit Knowledge Base Entry';
+        form.setAttribute('data-mode', 'edit');
+        form.setAttribute('data-id', id);
+
+        // Show modal
+        modal.style.display = 'block';
+        overlay.style.display = 'block';
+
+    } catch (error) {
+        console.error('Error loading knowledge base entry:', error);
+        showNotification('Error loading knowledge base entry: ' + error.message, 'error');
+        }
+}
+
+// Function to view a knowledge base entry
+async function viewKnowledgeBaseEntry(id) {
+    // Fetch entry details
+    try {
+        const response = await fetch(`/api/knowledge-base/${id}/`);
+        if (!response.ok) {
+            throw new Error('Failed to load knowledge base entry');
+        }
+
+        const entry = await response.json();
+
+        // Show modal with entry details
+        const modal = document.getElementById('kb-view-modal');
+        const overlay = document.getElementById('kb-view-overlay');
+
+        if (!modal || !overlay) {
+            showNotification('Knowledge base view modal not found', 'error');
+            return;
+        }
+
+        // Fill modal with entry data
+        document.getElementById('kb-view-title').textContent = entry.title;
+        document.getElementById('kb-view-category').textContent = entry.category || 'Uncategorized';
+        document.getElementById('kb-view-content').textContent = entry.content;
+
+        // Show modal
+        modal.style.display = 'block';
+        overlay.style.display = 'block';
+
+    } catch (error) {
+        console.error('Error loading knowledge base entry:', error);
+        showNotification('Error loading knowledge base entry: ' + error.message, 'error');
+    }
+}
+
+// Function to save a knowledge base entry
+async function saveKnowledgeBaseEntry(form) {
+    const mode = form.getAttribute('data-mode');
+    const id = form.getAttribute('data-id');
+
+    const title = document.getElementById('kb-title-input').value.trim();
+    const category = document.getElementById('kb-category-input').value.trim();
+    const content = document.getElementById('kb-content-input').value.trim();
+
+    if (!title || !content) {
+        showNotification('Title and content are required', 'error');
+        return;
+    }
+
+    const data = {
+        title,
+        category,
+        content
+    };
+
+    try {
+        let url = '/api/knowledge-base/';
+        let method = 'POST';
+
+        if (mode === 'edit' && id) {
+            url = `/api/knowledge-base/${id}/`;
+            method = 'PUT';
+        }
+
+        const response = await fetch(url, {
+            method,
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to save knowledge base entry');
+        }
+
+        // Close modal
+        const modal = document.getElementById('kb-modal');
+        const overlay = document.getElementById('kb-overlay');
+
+        if (modal) modal.style.display = 'none';
+        if (overlay) overlay.style.display = 'none';
+
+        // Reload knowledge base entries
+        loadKnowledgeBase();
+
+        // Show notification
+        showNotification(`Knowledge base entry ${mode === 'edit' ? 'updated' : 'created'} successfully`, 'success');
+
+    } catch (error) {
+        console.error('Error saving knowledge base entry:', error);
+        showNotification('Error saving knowledge base entry: ' + error.message, 'error');
+    }
+}
+
+// Function to delete a knowledge base entry
+async function deleteKnowledgeBaseEntry(id) {
+    if (!confirm('Are you sure you want to delete this knowledge base entry? This cannot be undone.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/knowledge-base/${id}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to delete knowledge base entry');
+        }
+
+        // Reload knowledge base entries
+        loadKnowledgeBase();
+
+        // Show notification
+        showNotification('Knowledge base entry deleted successfully', 'success');
+
+    } catch (error) {
+        console.error('Error deleting knowledge base entry:', error);
+        showNotification('Error deleting knowledge base entry: ' + error.message, 'error');
+    }
+}
+
+// Function to set up all the modal functionality
+function setupModals() {
+    // Get all modals
+    const modals = document.querySelectorAll('.modal');
+
+    // Get all close buttons
+    const closeButtons = document.querySelectorAll('.modal-close, .modal-close-btn');
+
+    // When the user clicks on a close button, close the parent modal
+    closeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const modal = this.closest('.modal');
+            if (modal) {
+                modal.style.display = 'none';
+
+                // Reset form if this is the status update modal
+                if (modal.id === 'status-update-modal') {
+                    const commentsField = document.getElementById('status-comments');
+                    if (commentsField) {
+                        commentsField.value = '';
+                    }
+                }
+            }
+        });
+    });
+
+    // When the user clicks anywhere outside of the modal content, close it
+    window.addEventListener('click', function(event) {
+        modals.forEach(modal => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+
+                // Reset form if this is the status update modal
+                if (modal.id === 'status-update-modal') {
+                    const commentsField = document.getElementById('status-comments');
+                    if (commentsField) {
+                        commentsField.value = '';
+                    }
+                }
+            }
+        });
+    });
+
+    // Set up document upload form
+    const uploadForm = document.getElementById('document-upload-form');
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const formData = new FormData(this);
+            const statusDiv = document.getElementById('upload-status');
+
+            fetch('/api/documents/upload/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(result => {
+                statusDiv.innerHTML = `<div class="success">Document uploaded successfully!</div>`;
+
+                // Close the modal after a short delay
+                setTimeout(() => {
+                    document.getElementById('upload-modal').style.display = 'none';
+
+                    // Reload the documents list
+                    loadDocuments();
+                }, 1500);
+            })
+            .catch(error => {
+                console.error('Error uploading document:', error);
+                statusDiv.innerHTML = `<div class="error">Failed to upload document. Please try again.</div>`;
+            });
+        });
+    }
+
+    // Set up upload document button
+    const uploadBtn = document.getElementById('upload-document-btn');
+    if (uploadBtn) {
+        uploadBtn.addEventListener('click', function() {
+            const uploadModal = document.getElementById('upload-modal');
+            if (uploadModal) {
+                uploadModal.style.display = 'block';
+            }
+        });
+    }
+
+    // Set up status update form submission
+    const updateCommentsForm = document.getElementById('update-comments-form');
+    if (updateCommentsForm) {
+        updateCommentsForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const statusModal = document.getElementById('status-update-modal');
+            const incidentId = statusModal.dataset.incidentId;
+            const newStatus = statusModal.dataset.newStatus;
+            const comments = document.getElementById('status-comments').value;
+
+            // Call the update function
+            updateIncidentStatus(incidentId, newStatus, comments);
+
+            // Close the modal
+            statusModal.style.display = 'none';
+
+            // Clear the comments field for next time
+            document.getElementById('status-comments').value = '';
+        });
+    }
+
+    // Set up cancel button for status update modal
+    const cancelUpdateBtn = document.getElementById('cancel-update-btn');
+    if (cancelUpdateBtn) {
+        cancelUpdateBtn.addEventListener('click', function() {
+            const statusModal = document.getElementById('status-update-modal');
+            if (statusModal) {
+                statusModal.style.display = 'none';
+
+                // Clear the comments field
+                const commentsField = document.getElementById('status-comments');
+                if (commentsField) {
+                    commentsField.value = '';
+                }
+            }
+        });
+    }
+}
+
+// Function to clear all conversations
+async function clearAllConversations() {
+    if (!confirm('Are you sure you want to delete all conversations? This action cannot be undone.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/conversations/clear/', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to clear conversations');
+        }
+
+        const result = await response.json();
+        showNotification(result.message || 'All conversations cleared successfully', 'success');
+
+        // Reload conversations
+        loadConversations();
+
+        // Clear current conversation view
+        const chatMessages = document.getElementById('chat-messages');
+        if (chatMessages) {
+            chatMessages.innerHTML = '<div class="empty-state">No messages yet. Start the conversation!</div>';
+        }
+
+        const titleElement = document.getElementById('current-conversation-title');
+        if (titleElement) {
+            titleElement.textContent = 'Select or create a conversation';
+        }
+
+        currentConversationId = null;
+    } catch (error) {
+        console.error('Error clearing conversations:', error);
+        showNotification('Failed to clear conversations: ' + error.message, 'error');
+    }
+}
+
+// Function to clear all documents
+async function clearAllDocuments() {
+    if (!confirm('Are you sure you want to delete all documents? This action cannot be undone.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/documents/clear/', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to clear documents');
+        }
+
+        const result = await response.json();
+        showNotification(result.message || 'All documents cleared successfully', 'success');
+
+        // Reload documents
+        loadDocuments();
+    } catch (error) {
+        console.error('Error clearing documents:', error);
+        showNotification('Failed to clear documents: ' + error.message, 'error');
+    }
+}
+
+// Function to load knowledge base entries
+async function loadKnowledgeBase() {
+    try {
+        const response = await fetch('/api/knowledge-base/');
+        const entries = await response.json();
+
+        const kbList = document.getElementById('knowledge-base-list');
+        kbList.innerHTML = '';
+
+        // Group entries by category
+        const entriesByCategory = {};
+        entries.forEach(entry => {
+            const category = entry.category || 'Uncategorized';
+            if (!entriesByCategory[category]) {
+                entriesByCategory[category] = [];
+            }
+            entriesByCategory[category].push(entry);
+        });
+
+        // Create sections for each category
+        Object.keys(entriesByCategory).sort().forEach(category => {
+            const categoryHeading = document.createElement('div');
+            categoryHeading.className = 'kb-category-heading';
+            categoryHeading.textContent = category;
+            kbList.appendChild(categoryHeading);
+
+            entriesByCategory[category].forEach(entry => {
+                const entryElement = document.createElement('div');
+                entryElement.className = 'kb-entry';
+                entryElement.innerHTML = `
+                    <div class="kb-entry-header">
+                        <h4 class="kb-entry-title">${entry.title}</h4>
+                        <div class="kb-entry-actions">
+                            <button onclick="editKnowledgeBaseEntry('${entry.id}')" class="icon-btn">
+                                <i data-feather="edit-2"></i>
+                            </button>
+                            <button onclick="deleteKnowledgeBaseEntry('${entry.id}')" class="icon-btn">
+                                <i data-feather="trash-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="kb-entry-preview">${entry.content.substring(0, 100)}...</div>
+                `;
+
+                entryElement.addEventListener('click', (e) => {
+                    if (!e.target.closest('.icon-btn')) {
+                        viewKnowledgeBaseEntry(entry.id);
+                    }
+                });
+
+                kbList.appendChild(entryElement);
+            });
+        });
+
+        feather.replace();
+    } catch (error) {
+        console.error('Error loading knowledge base:', error);
+        showNotification('Error loading knowledge base: ' + error.message, 'error');
+    }
+}
+
+// Function to render knowledge base entries
+function renderKnowledgeBaseList(entries) {
+    const knowledgeBaseList = document.getElementById('knowledge-base-list');
+    if (!knowledgeBaseList) return;
+
+    if (entries.length === 0) {
+        knowledgeBaseList.innerHTML = '<div class="empty-state">No knowledge base entries available</div>';
+        return;
+    }
+
+    let html = '';
+    entries.forEach(entry => {
+        html += `<div class="kb-entry" data-id="${entry.id}">
+            <div class="kb-entry-header">
+                <h5 class="kb-entry-title">${entry.title}</h5>
+                <div class="kb-entry-actions">
+                    <button class="kb-edit-btn icon-btn" data-id="${entry.id}" title="Edit entry">
+                        <i data-feather="edit-2"></i>
+                    </button>
+                    <button class="kb-delete-btn icon-btn" data-id="${entry.id}" title="Delete entry">
+                        <i data-feather="trash-2"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="kb-entry-category">Category: ${entry.category || 'Uncategorized'}</div>
+            <div class="kb-entry-preview">${entry.content}</div>
+        </div>`;
+    });
+
+    knowledgeBaseList.innerHTML = html;
+
+    // Initialize feather icons
+    feather.replace();
+
+    // Add event listeners for edit and delete buttons
+    document.querySelectorAll('.kb-edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute('data-id');
+            editKnowledgeBaseEntry(id);
+        });
+    });
+
+    document.querySelectorAll('.kb-delete-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute('data-id');
+            deleteKnowledgeBaseEntry(id);
+        });
+    });
+
+    // Add event listeners for entry clicks (to view full content)
+    document.querySelectorAll('.kb-entry').forEach(entry => {
+        entry.addEventListener('click', () => {
+            const id = entry.getAttribute('data-id');
+            viewKnowledgeBaseEntry(id);
+        });
+    });
+}
+
+// Function to create a new knowledge base entry
+async function createKnowledgeBaseEntry() {
+    // Show modal with form
+    const modal = document.getElementById('kb-modal');
+    const overlay = document.getElementById('kb-overlay');
+    const form = document.getElementById('kb-form');
+    const modalTitle = document.getElementById('kb-modal-title');
+
+    if (!modal || !overlay || !form || !modalTitle) {
+        showNotification('Knowledge base modal not found', 'error');
+        return;
+    }
+
+    // Reset form and set title for create mode
+    form.reset();
+    modalTitle.textContent = 'Create Knowledge Base Entry';
+    form.setAttribute('data-mode', 'create');
+    form.removeAttribute('data-id');
+
+    // Show modal
+    modal.style.display = 'block';
+    overlay.style.display = 'block';
+
+    // Focus on title input
+    setTimeout(() => {
+        document.getElementById('kb-title-input').focus();
+    }, 100);
+}
+
+// Function to edit an existing knowledge base entry
+async function editKnowledgeBaseEntry(id) {
+    // Fetch entry details
+    try {
+        const response = await fetch(`/api/knowledge-base/${id}/`);
+        if (!response.ok) {
+            throw new Error('Failed to load knowledge base entry');
+        }
+
+        const entry = await response.json();
+
+        // Show modal with form
+        const modal = document.getElementById('kb-modal');
+        const overlay = document.getElementById('kb-overlay');
+        const form = document.getElementById('kb-form');
+        const modalTitle = document.getElementById('kb-modal-title');
+
+        if (!modal || !overlay || !form || !modalTitle) {
+            showNotification('Knowledge base modal not found', 'error');
+            return;
+        }
+
+        // Fill form with entry data
+        document.getElementById('kb-title-input').value = entry.title;
+        document.getElementById('kb-category-input').value = entry.category || '';
+        document.getElementById('kb-content-input').value = entry.content;
+
+        // Set form mode and ID
+        modalTitle.textContent = 'Edit Knowledge Base Entry';
+        form.setAttribute('data-mode', 'edit');
+        form.setAttribute('data-id', id);
+
+        // Show modal
+        modal.style.display = 'block';
+        overlay.style.display = 'block';
+
+    } catch (error) {
+        console.error('Error loading knowledge base entry:', error);
+        showNotification('Error loading knowledge base entry: ' + error.message, 'error');
+    }
+}
+
+// Function to view a knowledge base entry
+async function viewKnowledgeBaseEntry(id) {
+    // Fetch entry details
+    try {
+        const response = await fetch(`/api/knowledge-base/${id}/`);
+        if (!response.ok) {
+            throw new Error('Failed to load knowledge base entry');
+        }
+
+        const entry = await response.json();
+
+        // Show modal with entry details
+        const modal = document.getElementById('kb-view-modal');
+        const overlay = document.getElementById('kb-view-overlay');
+
+        if (!modal || !overlay) {
+            showNotification('Knowledge base view modal not found', 'error');
+            return;
+        }
+
+        // Fill modal with entry data
+        document.getElementById('kb-view-title').textContent = entry.title;
+        document.getElementById('kb-view-category').textContent = entry.category || 'Uncategorized';
+        document.getElementById('kb-view-content').textContent = entry.content;
+
+        // Show modal
+        modal.style.display = 'block';
+        overlay.style.display = 'block';
+
+    } catch (error) {
+        console.error('Error loading knowledge base entry:', error);
+        showNotification('Error loading knowledge base entry: ' + error.message, 'error');
+    }
+}
+
+// Function to save a knowledge base entry
+async function saveKnowledgeBaseEntry(form) {
+    const mode = form.getAttribute('data-mode');
+    const id = form.getAttribute('data-id');
+
+    const title = document.getElementById('kb-title-input').value.trim();
+    const category = document.getElementById('kb-category-input').value.trim();
+    const content = document.getElementById('kb-content-input').value.trim();
+
+    if (!title || !content) {
+        showNotification('Title and content are required', 'error');
+        return;
+    }
+
+    const data = {
+        title,
+        category,
+        content
+    };
+
+    try {
+        let url = '/api/knowledge-base/';
+        let method = 'POST';
+
+        if (mode === 'edit' && id) {
+            url = `/api/knowledge-base/${id}/`;
+            method = 'PUT';
+        }
+
+        const response = await fetch(url, {
+            method,
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to save knowledge base entry');
+        }
+
+        // Close modal
+        const modal = document.getElementById('kb-modal');
+        const overlay = document.getElementById('kb-overlay');
+
+        if (modal) modal.style.display = 'none';
+        if (overlay) overlay.style.display = 'none';
+
+        // Reload knowledge base entries
+        loadKnowledgeBase();
+
+        // Show notification
+        showNotification(`Knowledge base entry ${mode === 'edit' ? 'updated' : 'created'} successfully`, 'success');
+
+    } catch (error) {
+        console.error('Error saving knowledge base entry:', error);
+        showNotification('Error saving knowledge base entry: ' + error.message, 'error');
+    }
+}
+
+// Function to delete a knowledge base entry
+async function deleteKnowledgeBaseEntry(id) {
+    if (!confirm('Are you sure you want to delete this knowledge base entry? This cannot be undone.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/knowledge-base/${id}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to delete knowledge base entry');
+        }
+
+        // Reload knowledge base entries
+        loadKnowledgeBase();
+
+        // Show notification
+        showNotification('Knowledge base entry deleted successfully', 'success');
+
+    } catch (error) {
+        console.error('Error deleting knowledge base entry:', error);
+        showNotification('Error deleting knowledge base entry: ' + error.message, 'error');
+    }
+}
+
+// Initialize event listeners when DOM is loaded
+function toggleKnowledgeBase() {
+    const kbContainer = document.querySelector('.knowledge-base-container');
+    const overlay = document.getElementById('kb-overlay');
+
+    if (kbContainer.style.display === 'none' || !kbContainer.style.display) {
+        kbContainer.style.display = 'block';
+        overlay.style.display = 'block';
+        loadKnowledgeBase(); // Load KB entries when opening popup
+    } else {
+        kbContainer.style.display = 'none';
+        overlay.style.display = 'none';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize modals
+    // Add KB toggle button handler
+    const openKbBtn = document.getElementById('open-kb-btn');
+    if (openKbBtn) {
+        openKbBtn.addEventListener('click', toggleKnowledgeBase);
+    }
+
+    // Add overlay click handler to close KB
+    const overlay = document.getElementById('kb-overlay');
+    if (overlay) {
+        overlay.addEventListener('click', toggleKnowledgeBase);
+    }
+    // Initialize Feather icons
+    if (window.feather) {
+        feather.replace();
+    }
+
+    // Set up modal functionality
     setupModals();
-    
-    // Load data
+
+    // Load initial data
     loadConversations();
     loadDocuments();
     loadIncidents();
     loadAutomations();
     loadDashboards();
     loadLogs();
-    
-    // Set up event listeners for global actions
-    
-    // Chat form submission
+    loadKnowledgeBase();
+
+    // Set up chat form submission handler
     const chatForm = document.getElementById('chat-form');
     if (chatForm) {
         chatForm.addEventListener('submit', handleChatSubmit);
     }
-    
-    // Create new chat button
+
+    // Set up new chat button handler
     const newChatBtn = document.getElementById('new-chat-btn');
     if (newChatBtn) {
         newChatBtn.addEventListener('click', createNewChat);
     }
-    
-    // Rename chat button
-    const renameChatBtn = document.getElementById('rename-chat-btn');
-    if (renameChatBtn) {
-        renameChatBtn.addEventListener('click', renameCurrentChat);
-    }
-    
-    // Delete chat button
+
+    // Set up delete chat button handler
     const deleteChatBtn = document.getElementById('delete-chat-btn');
     if (deleteChatBtn) {
         deleteChatBtn.addEventListener('click', deleteCurrentChat);
     }
-    
-    // Clear all conversations button
-    const clearConversationsBtn = document.getElementById('clear-conversations-btn');
-    if (clearConversationsBtn) {
-        clearConversationsBtn.addEventListener('click', clearAllConversations);
+
+    // Set up rename chat button handler
+    const renameChatBtn = document.getElementById('rename-chat-btn');
+    if (renameChatBtn) {
+        renameChatBtn.addEventListener('click', renameCurrentChat);
     }
-    
-    // Upload document button
-    const uploadDocumentBtn = document.getElementById('upload-document-btn');
-    if (uploadDocumentBtn) {
-        uploadDocumentBtn.addEventListener('click', function() {
-            const modal = document.getElementById('upload-document-modal');
-            if (modal) {
-                modal.style.display = 'block';
-            }
-        });
+
+    // Set up clear all conversations button handler
+    const clearAllConversationsBtn = document.getElementById('clear-all-conversations-btn');
+    if (clearAllConversationsBtn) {
+        clearAllConversationsBtn.addEventListener('click', clearAllConversations);
     }
-    
-    // Clear all documents button
-    const clearDocumentsBtn = document.getElementById('clear-documents-btn');
-    if (clearDocumentsBtn) {
-        clearDocumentsBtn.addEventListener('click', clearAllDocuments);
+
+    // Set up clear all documents button handler
+    const clearAllDocumentsBtn = document.getElementById('clear-all-documents-btn');
+    if (clearAllDocumentsBtn) {
+        clearAllDocumentsBtn.addEventListener('click', clearAllDocuments);
     }
-    
-    // Knowledge base create button
-    const createKbBtn = document.getElementById('create-kb-btn');
-    if (createKbBtn) {
-        createKbBtn.addEventListener('click', createKnowledgeBaseEntry);
+
+    // Set up knowledge base create button handler
+    const createKnowledgeBaseBtn = document.getElementById('create-kb-btn');
+    if (createKnowledgeBaseBtn) {
+        createKnowledgeBaseBtn.addEventListener('click', createKnowledgeBaseEntry);
     }
-    
-    // Knowledge base form submission
-    const kbForm = document.getElementById('knowledge-base-form');
+
+    // Set up knowledge base form submit handler
+    const kbForm = document.getElementById('kb-form');
     if (kbForm) {
         kbForm.addEventListener('submit', function(event) {
             event.preventDefault();
             saveKnowledgeBaseEntry(this);
         });
     }
-    
-    // Knowledge base toggle button
-    const toggleKbBtn = document.getElementById('toggle-kb-btn');
-    if (toggleKbBtn) {
-        toggleKbBtn.addEventListener('click', toggleKnowledgeBase);
+
+    // Set up knowledge base modal close buttons
+    const kbModalCloseBtn = document.getElementById('kb-modal-close');
+    if (kbModalCloseBtn) {
+        kbModalCloseBtn.addEventListener('click', function() {
+            document.getElementById('kb-modal').style.display = 'none';
+            document.getElementById('kb-overlay').style.display = 'none';
+        });
     }
-    
-    // Automatic refreshing of data
-    // Refresh logs, incidents and automations every 30 seconds
-    setInterval(() => {
-        loadLogs();
-        loadIncidents();
-        loadAutomations();
-        loadDashboards();
-    }, 30000);
+
+    const kbViewModalCloseBtn = document.getElementById('kb-view-modal-close');
+    if (kbViewModalCloseBtn) {
+        kbViewModalCloseBtn.addEventListener('click', function() {
+            document.getElementById('kb-view-modal').style.display = 'none';
+            document.getElementById('kb-view-overlay').style.display = 'none';
+        });
+    }
 });
