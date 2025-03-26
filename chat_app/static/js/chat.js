@@ -171,7 +171,7 @@ function displayMessages(messages) {
 
         // Handle line breaks
         formattedContent = formattedContent.replace(/\n/g, '<br>');
-
+        formattedContent=marked.parse(formattedContent);
         html += `
             <div class="message ${messageClass}">
                 <div class="message-content">${formattedContent}</div>
