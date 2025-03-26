@@ -409,6 +409,41 @@ async function handleChatSubmit(event) {
             
             return;
         }
+        
+        // Check if this is an automation response with logs
+        if (responseData && responseData.automation_logs) {
+            console.log("Received automation logs:", responseData.automation_logs);
+            
+            // Remove loading indicator
+            if (loadingElement) {
+                loadingElement.remove();
+            }
+
+            // Display messages directly from the response
+            if (responseData.messages) {
+                displayMessages(responseData.messages);
+            } else {
+                // Fetch updated conversation to display messages
+                const conversationResponse = await fetch(`/api/conversations/${currentConversationId}/`);
+                if (conversationResponse.ok) {
+                    const updatedConversation = await conversationResponse.json();
+                    displayMessages(updatedConversation.messages);
+                }
+            }
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Show automation logs in modal
+            showAutomationLogs(responseData.automation_logs);
+            
+            // Create a log entry
+            createLogEntry(
+                responseData.automation_logs.status === 'success' ? 'info' : 'error', 
+                'automation_service',
+                `Automation '${responseData.automation_logs.automation?.name || 'Unknown'}' executed: ${responseData.automation_logs.message || 'No details'}`
+            );
+            
+            return;
+        }
 
         // Regular response - fetch updated conversation
         const conversationResponse = await fetch(`/api/conversations/${currentConversationId}/`);
@@ -754,84 +789,126 @@ function showStatusUpdateModal(incidentId, newStatus) {
         modal.dataset.incidentId = incidentId;
         modal.dataset.newStatus = newStatus;
 
-        // Update modal title
-        const modalTitle = modal.querySelector('.modal-title');
+        // Update modal title based on status
+        const modalTitle = modal.querySelector('h2');
         if (modalTitle) {
-            modalTitle.textContent = `Add Comments to Incident`;
+            const stateMap = {
+                1: 'New', 
+                2: 'In Progress',
+                3: 'On Hold',
+                4: 'Resolved',
+                5: 'Closed/Canceled',
+                'add-comments': 'Add Comments'
+            };
+            
+            const statusName = stateMap[newStatus] || 'Update State';
+            modalTitle.textContent = newStatus === 'add-comments' 
+                ? `Add Comments to Incident` 
+                : `Update Status to ${statusName}`;
         }
     }
 }
 
 // Function to update incident status
 function updateIncidentStatus(incidentId, newState, comments = '') {
-    // Prepare request data with state field
-    const requestData = {
-        state: parseInt(newState) // Convert to integer since state is stored as an integer
-    };
+    // Return a Promise to allow chaining with other async operations
+    return new Promise((resolve, reject) => {
+        // Prepare request data with state field
+        const requestData = {
+            state: parseInt(newState) // Convert to integer since state is stored as an integer
+        };
 
-    // Add comments if provided
-    if (comments) {
-        requestData.comments = comments;
-    }
-
-    // Send PUT request to update incident
-    fetch(`/api/incidents/${incidentId}/`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCSRFToken()
-        },
-        body: JSON.stringify(requestData)
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Failed to update incident status');
+        // Add comments if provided
+        if (comments) {
+            requestData.comments = comments;
         }
-        return response.json();
-    })
-    .then(updatedIncident => {
-        // Update the UI with the new incident data
-        showIncidentDetails(updatedIncident);
 
-        // Also update the incident in the list
-        updateIncidentInList(updatedIncident);
-
-        // Show success message
-        const detailsContainer = document.getElementById('incident-details');
-        const successMsg = document.createElement('div');
-        successMsg.className = 'status-update-success';
-        successMsg.textContent = `Comments added successfully`;
-        successMsg.style.color = 'green';
-        successMsg.style.marginTop = '10px';
-        detailsContainer.appendChild(successMsg);
-
-        // Remove success message after 3 seconds
-        setTimeout(() => {
-            if (successMsg.parentNode) {
-                successMsg.parentNode.removeChild(successMsg);
+        // Send PUT request to update incident
+        fetch(`/api/incidents/${incidentId}/`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to update incident status');
             }
-        }, 3000);
+            return response.json();
+        })
+        .then(updatedIncident => {
+            // Update the UI with the new incident data
+            showIncidentDetails(updatedIncident);
 
-        // Reload the incidents list to reflect the updates
-        loadIncidents();
-    })
-    .catch(error => {
-        console.error('Error updating incident status:', error);
-        // Show error message
-        const detailsContainer = document.getElementById('incident-details');
-        const errorMsg = document.createElement('div');
-        errorMsg.className = 'status-update-error';
-        errorMsg.textContent = 'Failed to add comments. Please try again.';
-        errorMsg.style.color = 'red';
-        errorMsg.style.marginTop = '10px';
-        detailsContainer.appendChild(errorMsg);
+            // Also update the incident in the list
+            updateIncidentInList(updatedIncident);
 
-        // Remove error message after 3 seconds
-        setTimeout(() => {
-            if (errorMsg.parentNode) {
-                errorMsg.parentNode.removeChild(errorMsg);
-            }
-        }, 3000);
+            // Show success message
+            const detailsContainer = document.getElementById('incident-details');
+            const successMsg = document.createElement('div');
+            successMsg.className = 'status-update-success';
+            
+            // Check if this was a status update or just comments
+            const isStatusUpdate = newState !== 'add-comments';
+            const statusMap = {
+                1: 'New',
+                2: 'In Progress',
+                3: 'On Hold',
+                4: 'Resolved',
+                5: 'Closed/Canceled'
+            };
+            
+            successMsg.textContent = isStatusUpdate 
+                ? `Status updated to ${statusMap[newState] || 'new status'}` 
+                : `Comments added successfully`;
+                
+            successMsg.style.color = 'green';
+            successMsg.style.marginTop = '10px';
+            detailsContainer.appendChild(successMsg);
+
+            // Remove success message after 3 seconds
+            setTimeout(() => {
+                if (successMsg.parentNode) {
+                    successMsg.parentNode.removeChild(successMsg);
+                }
+            }, 3000);
+
+            // Reload the incidents list to reflect the updates
+            loadIncidents();
+            
+            // Resolve the promise with the updated incident
+            resolve(updatedIncident);
+        })
+        .catch(error => {
+            console.error('Error updating incident status:', error);
+            // Show error message
+            const detailsContainer = document.getElementById('incident-details');
+            const errorMsg = document.createElement('div');
+            errorMsg.className = 'status-update-error';
+            
+            // Check if this was a status update or just comments
+            const isStatusUpdate = newState !== 'add-comments';
+            
+            errorMsg.textContent = isStatusUpdate 
+                ? `Failed to update status. Please try again.` 
+                : `Failed to add comments. Please try again.`;
+                
+            errorMsg.style.color = 'red';
+            errorMsg.style.marginTop = '10px';
+            detailsContainer.appendChild(errorMsg);
+
+            // Remove error message after 3 seconds
+            setTimeout(() => {
+                if (errorMsg.parentNode) {
+                    errorMsg.parentNode.removeChild(errorMsg);
+                }
+            }, 3000);
+            
+            // Reject the promise with the error
+            reject(error);
+        });
     });
 }
 
@@ -1094,9 +1171,8 @@ function showAutomationLogs(data) {
     const automationDesc = automationInfo.description || '';
     
     // Extract result information
-    const result = data.result || {};
-    const resultStatus = result.status || 'unknown';
-    const resultMessage = result.message || 'No detailed information available';
+    const resultStatus = data.status || 'unknown';
+    const resultMessage = data.message || 'No detailed information available';
     
     // Determine status class for styling
     const statusClass = resultStatus === 'success' ? 'success' : 'error';
@@ -1155,17 +1231,17 @@ function showAutomationLogs(data) {
     // Update response data
     const responseData = document.getElementById('api-response-data');
     if (responseData) {
-        if (result.raw_response) {
+        if (data.raw_response) {
             let rawResponseData = '';
             try {
                 // Try to prettify JSON if it's an object
-                if (typeof result.raw_response === 'object') {
-                    rawResponseData = JSON.stringify(result.raw_response, null, 2);
+                if (typeof data.raw_response === 'object') {
+                    rawResponseData = JSON.stringify(data.raw_response, null, 2);
                 } else {
-                    rawResponseData = String(result.raw_response);
+                    rawResponseData = String(data.raw_response);
                 }
             } catch (e) {
-                rawResponseData = String(result.raw_response);
+                rawResponseData = String(data.raw_response);
             }
             responseData.textContent = rawResponseData;
         } else {

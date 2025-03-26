@@ -144,16 +144,47 @@ def messages(request, conversation_id):
             # Handle automation command
             automation_response = get_automation_service().handle_automation_command(user_message)
             
-            # Create assistant message with automation response
-            assistant_message = Message.objects.create(
-                conversation=conversation,
-                role='assistant',
-                content=automation_response
-            )
-            
-            # Return both user and assistant messages
-            serializer = MessageSerializer([user_message_obj, assistant_message], many=True)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            # Check if response is structured (dict) or simple string
+            if isinstance(automation_response, dict) and ('logs' in automation_response or 'status' in automation_response):
+                # For structured responses, create an assistant message with formatted message
+                # and include the full structured response for client-side processing
+                if 'formatted_message' in automation_response:
+                    assistant_message_content = automation_response['formatted_message']
+                else:
+                    # Create a formatted message if not already provided
+                    assistant_message_content = f"**{automation_response.get('automation', {}).get('name', 'Automation')} Execution Result:**\n\n"
+                    
+                    if automation_response.get('status') == 'success':
+                        assistant_message_content += f"✅ {automation_response.get('message', 'Execution completed successfully.')}"
+                    else:
+                        assistant_message_content += f"❌ {automation_response.get('message', 'Execution failed.')}"
+                
+                # Create the message
+                assistant_message = Message.objects.create(
+                    conversation=conversation,
+                    role='assistant',
+                    content=assistant_message_content
+                )
+                
+                # Return both messages and the automation logs for the modal
+                serializer = MessageSerializer([user_message_obj, assistant_message], many=True)
+                
+                # Return structured response with messages and automation logs
+                return Response({
+                    'messages': serializer.data,
+                    'automation_logs': automation_response
+                }, status=status.HTTP_201_CREATED)
+            else:
+                # For simple string responses
+                assistant_message = Message.objects.create(
+                    conversation=conversation,
+                    role='assistant',
+                    content=automation_response
+                )
+                
+                # Return both user and assistant messages
+                serializer = MessageSerializer([user_message_obj, assistant_message], many=True)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
             
         # Check for @datasource command
         if '@datasource' in user_message.lower():
@@ -373,36 +404,63 @@ def trigger_automation(request, automation_id):
         source="automation_service"
     )
     
+    # Get automation info for the response
+    automation_info = {
+        "id": str(automation.id),
+        "name": automation.name,
+        "description": automation.description,
+        "endpoint": automation.endpoint,
+        "call_type": automation.call_type
+    }
+    
     # Execute the automation with the specified call type
     result = get_automation_service().execute_automation(
         automation.endpoint,
         automation.parameters,
         request.data,
-        call_type=automation.call_type
+        call_type=automation.call_type,
+        automation_info=automation_info
     )
     
-    # Log the result
+    # If the result is already a structured response with logs
     if isinstance(result, dict) and 'status' in result:
+        # Make sure the result has the automation info
+        if 'automation' not in result:
+            result['automation'] = automation_info
+            
+        # Make sure it has logs
+        if 'logs' not in result or not result['logs']:
+            result['logs'] = [{
+                "timestamp": log_entry.timestamp.isoformat(),
+                "level": log_entry.level,
+                "message": log_entry.message
+            }]
+            
+        # Log the result in the database
         log_level = "info" if result['status'] == "success" else "error"
         Log.objects.create(
-            message=f"Automation result: {result['message']}",
+            message=f"Automation result: {result.get('message', 'No details')}",
             level=log_level,
             source="automation_service"
         )
+        
+        # Return the structured response directly
+        return Response(result)
+        
+    else:
+        # Construct a structured response for legacy/text results
+        return Response({
+            "status": "success",
+            "message": str(result) if result else "Automation executed successfully",
+            "automation": automation_info,
+            "logs": [{
+                "timestamp": log_entry.timestamp.isoformat(),
+                "level": log_entry.level,
+                "message": log_entry.message
+            }],
+            "raw_response": result
+        })
     
-    return Response({
-        "automation": {
-            "id": str(automation.id),
-            "name": automation.name,
-            "description": automation.description
-        },
-        "result": result,
-        "logs": [{
-            "timestamp": log_entry.timestamp.isoformat(),
-            "level": log_entry.level,
-            "message": log_entry.message
-        }]
-    })
 
 @api_view(['GET'])
 def debug_vector_store(request):
@@ -542,19 +600,20 @@ def incident_detail(request, incident_id):
         return Response(response_data)
     
     elif request.method == 'PUT':
-        # For updating with comments
-        if 'comments' in request.data:
-            incident.comments = request.data['comments']
-            incident.save()
-            serializer = IncidentSerializer(incident)
-            return Response(serializer.data)
-        # For full updates
-        else:
-            serializer = IncidentSerializer(incident, data=request.data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Get current incident data
+        current_data = IncidentSerializer(incident).data
+        
+        # Update with provided fields
+        for field, value in request.data.items():
+            if field in current_data:
+                setattr(incident, field, value)
+        
+        # Save the updated incident
+        incident.save()
+        
+        # Return the updated incident
+        serializer = IncidentSerializer(incident)
+        return Response(serializer.data)
     
     elif request.method == 'DELETE':
         incident.delete()

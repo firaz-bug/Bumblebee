@@ -246,13 +246,60 @@ class AutomationService:
             }
         )
         
-        # Format the result for chat display
-        if isinstance(execution_result, dict) and 'message' in execution_result:
-            return f"**{automation.name}** execution result:\n\n{execution_result['message']}"
-        elif isinstance(execution_result, str):
-            return f"**{automation.name}** execution result:\n\n{execution_result}"
+        # Return a structured response with logs for modals
+        automation_info = {
+            'name': automation.name,
+            'id': str(automation.id),
+            'endpoint': automation.endpoint,
+            'call_type': automation.call_type,
+            'description': automation.description
+        }
+        
+        # Create a log entry in the database
+        from ..models import Log
+        Log.objects.create(
+            message=f"Automation execution: {automation.name} - {execution_result.get('message', 'No details')}",
+            level="info" if execution_result.get('status', '') == 'success' else "error",
+            source="automation_service"
+        )
+        
+        # If it's already a structured response, just ensure it has all required fields
+        if isinstance(execution_result, dict):
+            # Ensure the result has all expected fields for the frontend
+            if 'automation' not in execution_result:
+                execution_result['automation'] = automation_info
+            if 'status' not in execution_result:
+                execution_result['status'] = 'success'
+            if 'logs' not in execution_result:
+                execution_result['logs'] = []
+            
+            # Return the formatted result for chat display
+            formatted_message = ""
+            if execution_result.get('status') == 'success':
+                formatted_message = f"**{automation.name}** execution result:\n\n✅ {execution_result.get('message', 'Execution completed successfully')}"
+            else:
+                formatted_message = f"**{automation.name}** execution result:\n\n❌ {execution_result.get('message', 'Execution failed')}"
+            
+            execution_result['formatted_message'] = formatted_message
+            return execution_result
+        
+        # Create a structured response for string or other types
         else:
-            return f"**{automation.name}** execution completed successfully."
+            message = str(execution_result) if execution_result else "Execution completed successfully"
+            formatted_message = f"**{automation.name}** execution result:\n\n{message}"
+            
+            return {
+                'automation': automation_info,
+                'status': 'success',
+                'message': message,
+                'formatted_message': formatted_message,
+                'logs': [{
+                    'timestamp': datetime.now().isoformat(),
+                    'level': 'info',
+                    'message': f"Automation {automation.name} executed"
+                }],
+                'raw_response': execution_result
+            }
     
     def execute_automation(self, endpoint, param_schema, params, call_type='POST', automation_info=None):
         """
