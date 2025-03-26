@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Expose the port your Django app runs on
-EXPOSE 5000
+EXPOSE 80
 
 # Define the command to run your Django application
-CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:5000"]
+CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:80"]
