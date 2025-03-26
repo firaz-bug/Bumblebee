@@ -624,7 +624,10 @@
 <!-- Knowledge Base Container -->
 <div class="knowledge-base-container" style="display: none;">
     <div class="knowledge-base-header">
-        <h3>Knowledge Base</h3>
+        <div class="kb-header-content">
+            <h3>Knowledge Base</h3>
+            <button onclick="createKnowledgeBaseEntry()" class="kb-add-btn">+ Add Entry</button>
+        </div>
         <button onclick="toggleKnowledgeBase()" class="close-btn">&times;</button>
     </div>
     <div id="knowledge-base-list" class="knowledge-base-list">
