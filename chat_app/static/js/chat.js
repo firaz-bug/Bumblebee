@@ -1593,6 +1593,7 @@ function toggleKnowledgeBase() {
     if (kbContainer.style.display === 'none' || !kbContainer.style.display) {
         kbContainer.style.display = 'block';
         overlay.style.display = 'block';
+        loadKnowledgeBase(); // Load KB entries when opening popup
     } else {
         kbContainer.style.display = 'none';
         overlay.style.display = 'none';
