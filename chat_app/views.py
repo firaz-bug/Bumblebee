@@ -327,14 +327,43 @@ def trigger_automation(request, automation_id):
             status=status.HTTP_404_NOT_FOUND
         )
     
-    # Execute the automation
+    # Create a log entry for this automation execution
+    log_entry = Log.objects.create(
+        message=f"Executing automation: {automation.name}",
+        level="info",
+        source="automation_service"
+    )
+    
+    # Execute the automation with the specified call type
     result = get_automation_service().execute_automation(
         automation.endpoint,
         automation.parameters,
-        request.data
+        request.data,
+        call_type=automation.call_type
     )
     
-    return Response(result)
+    # Log the result
+    if isinstance(result, dict) and 'status' in result:
+        log_level = "info" if result['status'] == "success" else "error"
+        Log.objects.create(
+            message=f"Automation result: {result['message']}",
+            level=log_level,
+            source="automation_service"
+        )
+    
+    return Response({
+        "automation": {
+            "id": str(automation.id),
+            "name": automation.name,
+            "description": automation.description
+        },
+        "result": result,
+        "logs": [{
+            "timestamp": log_entry.timestamp.isoformat(),
+            "level": log_entry.level,
+            "message": log_entry.message
+        }]
+    })
 
 @api_view(['GET'])
 def debug_vector_store(request):
