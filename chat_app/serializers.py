@@ -4,7 +4,7 @@ from .models import Document, Conversation, Message, Automation, Incident, DataS
 class DataSourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = DataSource
-        fields = ['id', 'name', 'description', 'endpoint', 'parameters', 'auth_required', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'description', 'endpoint', 'call_type', 'parameters', 'auth_required', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
         
 class DashboardSerializer(serializers.ModelSerializer):
@@ -41,12 +41,14 @@ class ConversationSerializer(serializers.ModelSerializer):
 class AutomationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Automation
-        fields = ['id', 'name', 'description', 'endpoint', 'parameters']
+        fields = ['id', 'name', 'description', 'endpoint', 'call_type', 'parameters']
 
 class IncidentSerializer(serializers.ModelSerializer):
+    state_display = serializers.CharField(source='get_state_display', read_only=True)
+    
     class Meta:
         model = Incident
-        fields = ['id', 'incident_number', 'priority', 'short_description', 'long_description', 'comments', 'created_at', 'updated_at']
+        fields = ['id', 'incident_number', 'priority', 'short_description', 'long_description', 'state', 'state_display', 'comments', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 class KnowledgeBaseSerializer(serializers.ModelSerializer):

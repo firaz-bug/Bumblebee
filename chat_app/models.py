@@ -4,10 +4,16 @@ import uuid
 
 class DataSource(models.Model):
     """Model for external data sources that can be queried."""
+    CALL_TYPE_CHOICES = [
+        ('GET', 'GET'),
+        ('POST', 'POST'),
+    ]
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100)
     description = models.TextField()
     endpoint = models.CharField(max_length=255)
+    call_type = models.CharField(max_length=4, choices=CALL_TYPE_CHOICES, default='GET')
     parameters = models.JSONField(default=dict, blank=True)
     auth_required = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -91,10 +97,16 @@ class Message(models.Model):
 
 class Automation(models.Model):
     """Model for automation actions that can be triggered with @automation command."""
+    CALL_TYPE_CHOICES = [
+        ('GET', 'GET'),
+        ('POST', 'POST'),
+    ]
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100)
     description = models.TextField()
     endpoint = models.CharField(max_length=255)
+    call_type = models.CharField(max_length=4, choices=CALL_TYPE_CHOICES, default='POST')
     parameters = models.JSONField(default=dict, blank=True)
     
     def __str__(self):
@@ -102,11 +114,20 @@ class Automation(models.Model):
 
 class Incident(models.Model):
     """Model for storing incidents."""
+    STATE_CHOICES = [
+        (1, 'New'),
+        (2, 'In Progress'),
+        (3, 'On Hold'),
+        (4, 'Resolved'),
+        (5, 'Closed/Canceled'),
+    ]
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     incident_number = models.CharField(max_length=50)
     priority = models.CharField(max_length=20)
     short_description = models.CharField(max_length=255)
     long_description = models.TextField()
+    state = models.IntegerField(choices=STATE_CHOICES, default=1)
     comments = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
