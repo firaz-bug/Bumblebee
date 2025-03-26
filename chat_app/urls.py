@@ -23,7 +23,7 @@ urlpatterns = [
     path('api/debug/vector-store/', views.debug_vector_store, name='debug_vector_store'),
     
     # Incident endpoints
-    path('api/incidents/', views.incidents, name='incidents'),
+    path('api/incidents', views.incidents, name='incidents'),
     path('api/incidents/<uuid:incident_id>/', views.incident_detail, name='incident_detail'),
     
     # Dashboard endpoints

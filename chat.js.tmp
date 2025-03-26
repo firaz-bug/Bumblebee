@@ -691,7 +691,7 @@ function loadIncidents() {
     const incidentsList = document.getElementById('incidents-list');
     if (!incidentsList) return;
 
-    fetch('/api/incidents/')
+    fetch('/api/incidents')
         .then(response => {
             if (!response.ok) {
                 throw new Error('Network response was not ok');
@@ -1031,7 +1031,7 @@ function loadIncidents() {
     const incidentsList = document.getElementById('incidents-list');
     if (!incidentsList) return;
 
-    fetch('/api/incidents/')
+    fetch('/api/incidents')
         .then(response => {
             if (!response.ok) {
                 throw new Error('Network response was not ok');

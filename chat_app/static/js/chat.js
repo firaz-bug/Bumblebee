@@ -986,7 +986,7 @@ function loadIncidents() {
     // Show loading indicator
     incidentsList.innerHTML = '<div class="loading-incidents">Loading incidents...</div>';
 
-    fetch('/api/incidents/')
+    fetch('/api/incidents')
         .then(response => {
             if (!response.ok) {
                 throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);

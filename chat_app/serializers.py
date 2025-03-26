@@ -48,7 +48,7 @@ class IncidentSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Incident
-        fields = ['id', 'incident_number', 'priority', 'short_description', 'long_description', 'state', 'state_display', 'comments', 'created_at', 'updated_at']
+        fields = ['id', 'incident_number', 'sys_id', 'priority', 'short_description', 'long_description', 'state', 'state_display', 'comments', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 class KnowledgeBaseSerializer(serializers.ModelSerializer):

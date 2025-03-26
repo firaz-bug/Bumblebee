@@ -119,11 +119,13 @@ class Incident(models.Model):
         (2, 'In Progress'),
         (3, 'On Hold'),
         (4, 'Resolved'),
-        (5, 'Closed/Canceled'),
+        (5, 'Closed'),
+        (6, 'Cancelled'),
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     incident_number = models.CharField(max_length=50)
+    sys_id = models.CharField(max_length=50, blank=True, null=True)
     priority = models.CharField(max_length=20)
     short_description = models.CharField(max_length=255)
     long_description = models.TextField()
