@@ -1309,6 +1309,301 @@ async function clearAllDocuments() {
     }
 }
 
+// Function to load knowledge base entries
+async function loadKnowledgeBase() {
+    const knowledgeBaseList = document.getElementById('knowledge-base-list');
+    if (!knowledgeBaseList) return;
+    
+    try {
+        const response = await fetch('/api/knowledge-base/');
+        if (!response.ok) {
+            throw new Error('Failed to load knowledge base entries');
+        }
+        
+        const entries = await response.json();
+        renderKnowledgeBaseList(entries);
+    } catch (error) {
+        console.error('Error loading knowledge base entries:', error);
+        knowledgeBaseList.innerHTML = '<div class="error-msg">Error loading knowledge base entries</div>';
+    }
+}
+
+// Function to render knowledge base entries
+function renderKnowledgeBaseList(entries) {
+    const knowledgeBaseList = document.getElementById('knowledge-base-list');
+    if (!knowledgeBaseList) return;
+    
+    if (entries.length === 0) {
+        knowledgeBaseList.innerHTML = '<div class="empty-state">No knowledge base entries available</div>';
+        return;
+    }
+    
+    // Group entries by category
+    const categorizedEntries = {};
+    entries.forEach(entry => {
+        const category = entry.category || 'Uncategorized';
+        if (!categorizedEntries[category]) {
+            categorizedEntries[category] = [];
+        }
+        categorizedEntries[category].push(entry);
+    });
+    
+    let html = '';
+    
+    // Generate HTML for each category
+    Object.keys(categorizedEntries).sort().forEach(category => {
+        html += `<div class="kb-category">
+            <h4>${category}</h4>
+            <div class="kb-entries">`;
+        
+        categorizedEntries[category].forEach(entry => {
+            html += `<div class="kb-entry" data-id="${entry.id}">
+                <div class="kb-entry-header">
+                    <h5 class="kb-entry-title">${entry.title}</h5>
+                    <div class="kb-entry-actions">
+                        <button class="kb-edit-btn icon-btn" data-id="${entry.id}" title="Edit entry">
+                            <i data-feather="edit-2"></i>
+                        </button>
+                        <button class="kb-delete-btn icon-btn" data-id="${entry.id}" title="Delete entry">
+                            <i data-feather="trash-2"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="kb-entry-preview">${entry.content.substring(0, 100)}${entry.content.length > 100 ? '...' : ''}</div>
+            </div>`;
+        });
+        
+        html += `</div></div>`;
+    });
+    
+    knowledgeBaseList.innerHTML = html;
+    
+    // Initialize feather icons
+    feather.replace();
+    
+    // Add event listeners for edit and delete buttons
+    document.querySelectorAll('.kb-edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute('data-id');
+            editKnowledgeBaseEntry(id);
+        });
+    });
+    
+    document.querySelectorAll('.kb-delete-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute('data-id');
+            deleteKnowledgeBaseEntry(id);
+        });
+    });
+    
+    // Add event listeners for entry clicks (to view full content)
+    document.querySelectorAll('.kb-entry').forEach(entry => {
+        entry.addEventListener('click', () => {
+            const id = entry.getAttribute('data-id');
+            viewKnowledgeBaseEntry(id);
+        });
+    });
+}
+
+// Function to create a new knowledge base entry
+async function createKnowledgeBaseEntry() {
+    // Show modal with form
+    const modal = document.getElementById('kb-modal');
+    const overlay = document.getElementById('kb-overlay');
+    const form = document.getElementById('kb-form');
+    const modalTitle = document.getElementById('kb-modal-title');
+    
+    if (!modal || !overlay || !form || !modalTitle) {
+        showNotification('Knowledge base modal not found', 'error');
+        return;
+    }
+    
+    // Reset form and set title for create mode
+    form.reset();
+    modalTitle.textContent = 'Create Knowledge Base Entry';
+    form.setAttribute('data-mode', 'create');
+    form.removeAttribute('data-id');
+    
+    // Show modal
+    modal.style.display = 'block';
+    overlay.style.display = 'block';
+    
+    // Focus on title input
+    setTimeout(() => {
+        document.getElementById('kb-title-input').focus();
+    }, 100);
+}
+
+// Function to edit an existing knowledge base entry
+async function editKnowledgeBaseEntry(id) {
+    // Fetch entry details
+    try {
+        const response = await fetch(`/api/knowledge-base/${id}/`);
+        if (!response.ok) {
+            throw new Error('Failed to load knowledge base entry');
+        }
+        
+        const entry = await response.json();
+        
+        // Show modal with form
+        const modal = document.getElementById('kb-modal');
+        const overlay = document.getElementById('kb-overlay');
+        const form = document.getElementById('kb-form');
+        const modalTitle = document.getElementById('kb-modal-title');
+        
+        if (!modal || !overlay || !form || !modalTitle) {
+            showNotification('Knowledge base modal not found', 'error');
+            return;
+        }
+        
+        // Fill form with entry data
+        document.getElementById('kb-title-input').value = entry.title;
+        document.getElementById('kb-category-input').value = entry.category || '';
+        document.getElementById('kb-content-input').value = entry.content;
+        
+        // Set form mode and ID
+        modalTitle.textContent = 'Edit Knowledge Base Entry';
+        form.setAttribute('data-mode', 'edit');
+        form.setAttribute('data-id', id);
+        
+        // Show modal
+        modal.style.display = 'block';
+        overlay.style.display = 'block';
+        
+    } catch (error) {
+        console.error('Error loading knowledge base entry:', error);
+        showNotification('Error loading knowledge base entry: ' + error.message, 'error');
+    }
+}
+
+// Function to view a knowledge base entry
+async function viewKnowledgeBaseEntry(id) {
+    // Fetch entry details
+    try {
+        const response = await fetch(`/api/knowledge-base/${id}/`);
+        if (!response.ok) {
+            throw new Error('Failed to load knowledge base entry');
+        }
+        
+        const entry = await response.json();
+        
+        // Show modal with entry details
+        const modal = document.getElementById('kb-view-modal');
+        const overlay = document.getElementById('kb-view-overlay');
+        
+        if (!modal || !overlay) {
+            showNotification('Knowledge base view modal not found', 'error');
+            return;
+        }
+        
+        // Fill modal with entry data
+        document.getElementById('kb-view-title').textContent = entry.title;
+        document.getElementById('kb-view-category').textContent = entry.category || 'Uncategorized';
+        document.getElementById('kb-view-content').textContent = entry.content;
+        
+        // Show modal
+        modal.style.display = 'block';
+        overlay.style.display = 'block';
+        
+    } catch (error) {
+        console.error('Error loading knowledge base entry:', error);
+        showNotification('Error loading knowledge base entry: ' + error.message, 'error');
+    }
+}
+
+// Function to save a knowledge base entry
+async function saveKnowledgeBaseEntry(form) {
+    const mode = form.getAttribute('data-mode');
+    const id = form.getAttribute('data-id');
+    
+    const title = document.getElementById('kb-title-input').value.trim();
+    const category = document.getElementById('kb-category-input').value.trim();
+    const content = document.getElementById('kb-content-input').value.trim();
+    
+    if (!title || !content) {
+        showNotification('Title and content are required', 'error');
+        return;
+    }
+    
+    const data = {
+        title,
+        category,
+        content
+    };
+    
+    try {
+        let url = '/api/knowledge-base/';
+        let method = 'POST';
+        
+        if (mode === 'edit' && id) {
+            url = `/api/knowledge-base/${id}/`;
+            method = 'PUT';
+        }
+        
+        const response = await fetch(url, {
+            method,
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to save knowledge base entry');
+        }
+        
+        // Close modal
+        const modal = document.getElementById('kb-modal');
+        const overlay = document.getElementById('kb-overlay');
+        
+        if (modal) modal.style.display = 'none';
+        if (overlay) overlay.style.display = 'none';
+        
+        // Reload knowledge base entries
+        loadKnowledgeBase();
+        
+        // Show notification
+        showNotification(`Knowledge base entry ${mode === 'edit' ? 'updated' : 'created'} successfully`, 'success');
+        
+    } catch (error) {
+        console.error('Error saving knowledge base entry:', error);
+        showNotification('Error saving knowledge base entry: ' + error.message, 'error');
+    }
+}
+
+// Function to delete a knowledge base entry
+async function deleteKnowledgeBaseEntry(id) {
+    if (!confirm('Are you sure you want to delete this knowledge base entry? This cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/knowledge-base/${id}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to delete knowledge base entry');
+        }
+        
+        // Reload knowledge base entries
+        loadKnowledgeBase();
+        
+        // Show notification
+        showNotification('Knowledge base entry deleted successfully', 'success');
+        
+    } catch (error) {
+        console.error('Error deleting knowledge base entry:', error);
+        showNotification('Error deleting knowledge base entry: ' + error.message, 'error');
+    }
+}
+
 // Initialize event listeners when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Feather icons
@@ -1326,6 +1621,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadAutomations();
     loadDashboards();
     loadLogs();
+    loadKnowledgeBase();
     
     // Set up chat form submission handler
     const chatForm = document.getElementById('chat-form');
@@ -1361,5 +1657,37 @@ document.addEventListener('DOMContentLoaded', function() {
     const clearAllDocumentsBtn = document.getElementById('clear-all-documents-btn');
     if (clearAllDocumentsBtn) {
         clearAllDocumentsBtn.addEventListener('click', clearAllDocuments);
+    }
+    
+    // Set up knowledge base create button handler
+    const createKnowledgeBaseBtn = document.getElementById('create-kb-btn');
+    if (createKnowledgeBaseBtn) {
+        createKnowledgeBaseBtn.addEventListener('click', createKnowledgeBaseEntry);
+    }
+    
+    // Set up knowledge base form submit handler
+    const kbForm = document.getElementById('kb-form');
+    if (kbForm) {
+        kbForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            saveKnowledgeBaseEntry(this);
+        });
+    }
+    
+    // Set up knowledge base modal close buttons
+    const kbModalCloseBtn = document.getElementById('kb-modal-close');
+    if (kbModalCloseBtn) {
+        kbModalCloseBtn.addEventListener('click', function() {
+            document.getElementById('kb-modal').style.display = 'none';
+            document.getElementById('kb-overlay').style.display = 'none';
+        });
+    }
+    
+    const kbViewModalCloseBtn = document.getElementById('kb-view-modal-close');
+    if (kbViewModalCloseBtn) {
+        kbViewModalCloseBtn.addEventListener('click', function() {
+            document.getElementById('kb-view-modal').style.display = 'none';
+            document.getElementById('kb-view-overlay').style.display = 'none';
+        });
     }
 });
