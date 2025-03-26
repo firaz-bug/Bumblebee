@@ -679,10 +679,28 @@
         <div id="automation-logs-modal" class="modal">
             <div class="modal-content">
                 <span class="modal-close">&times;</span>
-                <h2>Automation Execution Logs</h2>
-                <div class="automation-logs-container">
-                    <div id="automation-logs-content" class="automation-logs-content">
-                        <!-- Logs will be displayed here -->
+                <div id="automation-logs-content">
+                    <!-- Header with automation info -->
+                    <div class="automation-log-header">
+                        <h3 id="automation-name">Automation Execution</h3>
+                        <div class="log-timestamp" id="automation-timestamp"></div>
+                        <div class="log-description" id="automation-description"></div>
+                    </div>
+                    
+                    <!-- Execution details section -->
+                    <div class="automation-log-details">
+                        <div class="automation-execution-logs">
+                            <h4>Execution Logs</h4>
+                            <div id="execution-logs-container">
+                                <!-- Execution logs will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- API Response section -->
+                    <div class="automation-log-response">
+                        <h4>API Response <span id="response-status"></span></h4>
+                        <pre id="api-response-data">Loading response data...</pre>
                     </div>
                 </div>
                 <div class="form-actions">
