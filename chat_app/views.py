@@ -180,7 +180,20 @@ def messages(request, conversation_id):
                 
                 # Return both messages with the structured response as metadata
                 serializer = MessageSerializer([user_message_obj, assistant_message], many=True)
-                response_data = {'messages': serializer.data, 'datasource_logs': datasource_response}
+                
+                # Ensure we include the full datasource_logs for the frontend to display the modal
+                # Make the logs structure clearer with explicit field mappings
+                response_data = {
+                    'messages': serializer.data, 
+                    'datasource_logs': {
+                        'datasource': datasource_response.get('datasource', {}),
+                        'status': datasource_response.get('status', ''),
+                        'message': datasource_response.get('message', ''),
+                        'logs': datasource_response.get('logs', []),
+                        'raw_response': datasource_response.get('raw_response')
+                    }
+                }
+                print("Returning datasource logs response:", response_data)
                 return Response(response_data, status=status.HTTP_201_CREATED)
             else:
                 # For simple string responses (like listings or errors), just return the string

@@ -377,13 +377,24 @@ async function handleChatSubmit(event) {
         
         // Check if this is a datasource response with logs
         if (responseData && responseData.datasource_logs) {
+            console.log("Received datasource logs:", responseData.datasource_logs);
+            
             // Remove loading indicator
             if (loadingElement) {
                 loadingElement.remove();
             }
 
             // Display messages directly from the response
-            displayMessages(responseData.messages);
+            if (responseData.messages) {
+                displayMessages(responseData.messages);
+            } else {
+                // Fetch updated conversation to display messages
+                const conversationResponse = await fetch(`/api/conversations/${currentConversationId}/`);
+                if (conversationResponse.ok) {
+                    const updatedConversation = await conversationResponse.json();
+                    displayMessages(updatedConversation.messages);
+                }
+            }
             chatMessages.scrollTop = chatMessages.scrollHeight;
             
             // Show datasource logs in modal
