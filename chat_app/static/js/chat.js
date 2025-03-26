@@ -564,12 +564,26 @@ function showIncidentDetails(incident) {
     const createdDate = new Date(incident.created_at).toLocaleString();
     const updatedDate = new Date(incident.updated_at).toLocaleString();
 
+    // Get state display based on the state value
+    const stateMap = {
+        1: 'New',
+        2: 'In Progress',
+        3: 'On Hold',
+        4: 'Resolved',
+        5: 'Closed/Canceled'
+    };
+    const stateDisplay = incident.state_display || stateMap[incident.state] || 'Unknown';
+
     // Build the HTML for the details section
     let html = `
         <h3>${incident.incident_number}: ${incident.short_description}</h3>
         <div class="incident-detail-row">
             <span class="detail-label">Priority:</span>
             <span class="detail-value ${incident.priority}">${incident.priority}</span>
+        </div>
+        <div class="incident-detail-row">
+            <span class="detail-label">State:</span>
+            <span class="detail-value">${stateDisplay}</span>
         </div>
         <div class="incident-detail-row">
             <span class="detail-label">Created:</span>
@@ -595,9 +609,10 @@ function showIncidentDetails(incident) {
         `;
     }
 
-    // Add "Add Comments" button
+    // Show state update control
     html += `
         <div class="incident-actions">
+            <button id="update-state-btn" class="btn">Update State</button>
             <button id="add-comments-btn" class="btn">Add Comments</button>
         </div>
     `;
@@ -609,6 +624,33 @@ function showIncidentDetails(incident) {
     if (addCommentsBtn) {
         addCommentsBtn.addEventListener('click', function() {
             showStatusUpdateModal(incident.id, 'add-comments');
+        });
+    }
+
+    // Add event listener for the Update State button
+    const updateStateBtn = document.getElementById('update-state-btn');
+    if (updateStateBtn) {
+        updateStateBtn.addEventListener('click', function() {
+            // Show the status update controls
+            const statusControls = document.getElementById('incident-status-controls');
+            if (statusControls) {
+                statusControls.style.display = 'flex';
+                
+                // Set the current state in the dropdown
+                const stateSelect = document.getElementById('status-select');
+                if (stateSelect) {
+                    stateSelect.value = incident.state;
+                }
+                
+                // Add click event to the update button
+                const updateBtn = document.getElementById('update-status-btn');
+                if (updateBtn) {
+                    updateBtn.onclick = function() {
+                        const newState = stateSelect.value;
+                        showStatusUpdateModal(incident.id, newState);
+                    };
+                }
+            }
         });
     }
 
@@ -683,16 +725,15 @@ function showStatusUpdateModal(incidentId, newStatus) {
 }
 
 // Function to update incident status
-function updateIncidentStatus(incidentId, newStatus, comments = '') {
-    // Prepare request data - since we removed status, we just update comments
-    const requestData = {};
+function updateIncidentStatus(incidentId, newState, comments = '') {
+    // Prepare request data with state field
+    const requestData = {
+        state: parseInt(newState) // Convert to integer since state is stored as an integer
+    };
 
     // Add comments if provided
     if (comments) {
         requestData.comments = comments;
-    } else {
-        // If no comments provided, there's nothing to update
-        return;
     }
 
     // Send PUT request to update incident
@@ -950,6 +991,14 @@ function renderAutomationsList(automations) {
 
 // Function to trigger an automation
 function triggerAutomation(automationId) {
+    // Show loading indicator
+    const btn = document.querySelector(`.run-btn[data-id="${automationId}"]`);
+    const originalText = btn ? btn.innerText : 'Run';
+    if (btn) {
+        btn.innerText = 'Running...';
+        btn.disabled = true;
+    }
+
     fetch(`/api/automations/${automationId}/trigger/`, {
         method: 'POST',
         headers: {
@@ -965,11 +1014,122 @@ function triggerAutomation(automationId) {
         return response.json();
     })
     .then(data => {
-        alert(`Automation triggered successfully: ${data.message || 'Completed'}`);
+        // Reset button state
+        if (btn) {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+
+        // Show logs in the modal
+        showAutomationLogs(data);
+        
+        // Create a log entry
+        createLogEntry('info', `Automation '${data.name || 'Unknown'}' executed successfully`, data.result || data.message || 'Completed');
     })
     .catch(error => {
         console.error('Error triggering automation:', error);
+        
+        // Reset button state
+        if (btn) {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+        
+        // Show error in logs
+        createLogEntry('error', 'Automation execution failed', error.message);
+        
+        // Show error alert
         alert('Failed to trigger automation. Please try again.');
+    });
+}
+
+// Function to show automation logs in modal
+function showAutomationLogs(data) {
+    const modal = document.getElementById('automation-logs-modal');
+    const overlay = document.getElementById('automation-logs-overlay');
+    const logsContent = document.getElementById('automation-logs-content');
+    
+    if (!modal || !logsContent) return;
+    
+    // Format logs
+    const automationName = data.name || 'Unknown Automation';
+    const automationResult = data.result || data.message || 'No detailed information available';
+    const callType = data.call_type || 'Unknown';
+    const endpoint = data.endpoint || 'Unknown endpoint';
+    const timestamp = new Date().toLocaleString();
+    
+    let logsHtml = `
+        <div class="automation-log-header">
+            <h3>${automationName}</h3>
+            <div class="log-timestamp">Executed: ${timestamp}</div>
+        </div>
+        <div class="automation-log-details">
+            <div class="log-item"><strong>Call Type:</strong> ${callType}</div>
+            <div class="log-item"><strong>Endpoint:</strong> ${endpoint}</div>
+            <div class="log-item"><strong>Result:</strong> ${automationResult}</div>
+        </div>
+    `;
+    
+    // Add response data if available
+    if (data.response_data) {
+        let responseData = '';
+        try {
+            // Try to prettify JSON
+            responseData = JSON.stringify(data.response_data, null, 2);
+        } catch (e) {
+            responseData = String(data.response_data);
+        }
+        
+        logsHtml += `
+            <div class="automation-log-response">
+                <h4>Response Data:</h4>
+                <pre>${responseData}</pre>
+            </div>
+        `;
+    }
+    
+    logsContent.innerHTML = logsHtml;
+    
+    // Show the modal
+    modal.style.display = 'block';
+    if (overlay) overlay.style.display = 'block';
+    
+    // Add event listeners to close buttons
+    const closeButtons = modal.querySelectorAll('.modal-close, .modal-close-btn');
+    closeButtons.forEach(btn => {
+        btn.onclick = function() {
+            modal.style.display = 'none';
+            if (overlay) overlay.style.display = 'none';
+        };
+    });
+}
+
+// Function to create a log entry
+function createLogEntry(level, source, message) {
+    fetch('/api/logs/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify({
+            level: level,
+            source: source,
+            message: message
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to create log entry');
+        }
+        return response.json();
+    })
+    .then(() => {
+        // Refresh logs
+        loadLogs();
+    })
+    .catch(error => {
+        console.error('Error creating log entry:', error);
     });
 }
 

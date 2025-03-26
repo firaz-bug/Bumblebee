@@ -399,6 +399,61 @@
             background-color: rgba(0, 0, 0, 0.5);
             z-index: 1000;
         }
+        
+        /* Automation logs modal styling */
+        .automation-logs-container {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+        
+        .automation-log-header {
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+        }
+        
+        .automation-log-header h3 {
+            margin: 0 0 5px 0;
+            color: var(--wf-red);
+        }
+        
+        .log-timestamp {
+            font-size: 0.85rem;
+            color: #777;
+        }
+        
+        .automation-log-details {
+            margin-bottom: 15px;
+        }
+        
+        .log-item {
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .automation-log-response {
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        
+        .automation-log-response pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
     </style>
 <script src="https://unpkg.com/feather-icons"></script>
 </head>
@@ -434,11 +489,13 @@
                 <div class="empty-state">Select an incident to view details</div>
                 <!-- Status update controls will appear here when an incident is selected -->
                 <div id="incident-status-controls" class="incident-status-update" style="display: none;">
-                    <label for="status-select">Status:</label>
+                    <label for="status-select">State:</label>
                     <select id="status-select" class="status-select">
-                        <option value="open">Open</option>
-                        <option value="in-progress">In Progress</option>
-                        <option value="resolved">Resolved</option>
+                        <option value="1">New</option>
+                        <option value="2">In Progress</option>
+                        <option value="3">On Hold</option>
+                        <option value="4">Resolved</option>
+                        <option value="5">Closed/Canceled</option>
                     </select>
                     <button id="update-status-btn" class="update-status-btn">Update</button>
                 </div>
@@ -618,8 +675,25 @@
             </div>
         </div>
 
+        <!-- Automation Logs Modal -->
+        <div id="automation-logs-modal" class="modal">
+            <div class="modal-content">
+                <span class="modal-close">&times;</span>
+                <h2>Automation Execution Logs</h2>
+                <div class="automation-logs-container">
+                    <div id="automation-logs-content" class="automation-logs-content">
+                        <!-- Logs will be displayed here -->
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn secondary-btn modal-close-btn">Close</button>
+                </div>
+            </div>
+        </div>
+
         <div id="kb-overlay" class="modal-overlay"></div>
         <div id="kb-view-overlay" class="modal-overlay"></div>
+        <div id="automation-logs-overlay" class="modal-overlay"></div>
 
 <!-- Knowledge Base Container -->
 <div class="knowledge-base-container" style="display: none;">
