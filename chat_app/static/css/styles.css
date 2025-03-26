@@ -1644,3 +1644,136 @@ html, body {
     background-color: #b01924;
 }
 
+/* Automation Logs Modal Styles */
+#automation-logs-modal .modal-content {
+    max-width: 800px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.automation-log-header {
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.automation-log-header h3 {
+    margin-top: 0;
+    color: var(--wf-red);
+    font-size: 1.4rem;
+}
+
+.log-timestamp {
+    color: var(--wf-gray);
+    font-size: 0.85rem;
+    margin-bottom: var(--spacing-xs);
+}
+
+.log-description {
+    color: var(--color-text);
+    margin-top: var(--spacing-sm);
+    font-style: italic;
+}
+
+.automation-log-details {
+    margin-bottom: var(--spacing-md);
+}
+
+.automation-log-details .log-item {
+    padding: var(--spacing-sm) 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.automation-execution-logs {
+    background-color: var(--color-bg-secondary);
+    border-radius: var(--border-radius-md);
+    padding: var(--spacing-md);
+    margin: var(--spacing-md) 0;
+}
+
+.automation-execution-logs h4 {
+    margin-top: 0;
+    margin-bottom: var(--spacing-sm);
+    color: var(--wf-dark-gray);
+}
+
+.automation-execution-logs .log-item {
+    padding: var(--spacing-xs);
+    margin-bottom: var(--spacing-xs);
+    border-bottom: 1px solid var(--color-border);
+    font-family: monospace;
+    display: flex;
+    align-items: center;
+}
+
+.log-time {
+    color: var(--wf-gray);
+    margin-right: var(--spacing-sm);
+    font-size: 0.85rem;
+    min-width: 80px;
+}
+
+.log-level {
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-right: var(--spacing-sm);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    min-width: 50px;
+    text-align: center;
+}
+
+.log-info .log-level {
+    background-color: #cfe2ff;
+    color: #084298;
+}
+
+.log-error .log-level {
+    background-color: var(--wf-light-red);
+    color: var(--wf-red);
+}
+
+.log-warning .log-level {
+    background-color: #fff3cd;
+    color: #664d03;
+}
+
+.log-message {
+    flex: 1;
+}
+
+.automation-log-response {
+    background-color: #f8f9fa;
+    border-radius: var(--border-radius-md);
+    padding: var(--spacing-md);
+    margin-top: var(--spacing-md);
+}
+
+.automation-log-response h4 {
+    margin-top: 0;
+    margin-bottom: var(--spacing-sm);
+    color: var(--wf-dark-gray);
+}
+
+.automation-log-response pre {
+    background-color: #f0f0f0;
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius-sm);
+    overflow-x: auto;
+    white-space: pre-wrap;
+    font-size: 0.9rem;
+    color: #333;
+    border: 1px solid #ddd;
+}
+
+.status-success {
+    color: var(--color-success);
+    font-weight: bold;
+}
+
+.status-error {
+    color: var(--color-error);
+    font-weight: bold;
+}
+

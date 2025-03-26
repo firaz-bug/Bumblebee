@@ -1051,39 +1051,73 @@ function showAutomationLogs(data) {
     
     if (!modal || !logsContent) return;
     
-    // Format logs
-    const automationName = data.name || 'Unknown Automation';
-    const automationResult = data.result || data.message || 'No detailed information available';
-    const callType = data.call_type || 'Unknown';
-    const endpoint = data.endpoint || 'Unknown endpoint';
+    // Format logs based on the structured response format
+    const automationInfo = data.automation || {};
+    const automationName = automationInfo.name || 'Unknown Automation';
+    const automationDesc = automationInfo.description || '';
+    
+    // Extract result information
+    const result = data.result || {};
+    const resultStatus = result.status || 'unknown';
+    const resultMessage = result.message || 'No detailed information available';
+    
+    // Determine status class for styling
+    const statusClass = resultStatus === 'success' ? 'success' : 'error';
+    
+    // Get current timestamp
     const timestamp = new Date().toLocaleString();
     
+    // Process logs from the response
+    const logs = data.logs || [];
+    let logsSection = '';
+    
+    if (logs.length > 0) {
+        logsSection = '<div class="automation-execution-logs"><h4>Execution Logs:</h4>';
+        logs.forEach(log => {
+            const logTime = log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : '';
+            logsSection += `
+                <div class="log-item log-${log.level || 'info'}">
+                    <span class="log-time">${logTime}</span>
+                    <span class="log-level">${log.level || 'info'}</span>
+                    <span class="log-message">${log.message || ''}</span>
+                </div>
+            `;
+        });
+        logsSection += '</div>';
+    }
+    
+    // Build the HTML content
     let logsHtml = `
         <div class="automation-log-header">
             <h3>${automationName}</h3>
             <div class="log-timestamp">Executed: ${timestamp}</div>
+            ${automationDesc ? `<div class="log-description">${automationDesc}</div>` : ''}
         </div>
         <div class="automation-log-details">
-            <div class="log-item"><strong>Call Type:</strong> ${callType}</div>
-            <div class="log-item"><strong>Endpoint:</strong> ${endpoint}</div>
-            <div class="log-item"><strong>Result:</strong> ${automationResult}</div>
+            <div class="log-item"><strong>Status:</strong> <span class="status-${statusClass}">${resultStatus}</span></div>
+            <div class="log-item"><strong>Result:</strong> ${resultMessage}</div>
         </div>
+        ${logsSection}
     `;
     
-    // Add response data if available
-    if (data.response_data) {
-        let responseData = '';
+    // Add raw response data if available
+    if (result.raw_response) {
+        let rawResponseData = '';
         try {
-            // Try to prettify JSON
-            responseData = JSON.stringify(data.response_data, null, 2);
+            // Try to prettify JSON if it's an object
+            if (typeof result.raw_response === 'object') {
+                rawResponseData = JSON.stringify(result.raw_response, null, 2);
+            } else {
+                rawResponseData = String(result.raw_response);
+            }
         } catch (e) {
-            responseData = String(data.response_data);
+            rawResponseData = String(result.raw_response);
         }
         
         logsHtml += `
             <div class="automation-log-response">
                 <h4>Response Data:</h4>
-                <pre>${responseData}</pre>
+                <pre>${rawResponseData}</pre>
             </div>
         `;
     }
