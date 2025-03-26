@@ -221,17 +221,16 @@ class AutomationService:
                 
                 params[param] = value.strip()
         
-        # Check if required parameters are provided
+        # Parameters are optional - we'll show a warning but still proceed
         missing_params = []
         for param, desc in automation.parameters.items():
             if "Required" in desc and param not in params:
                 missing_params.append(param)
         
+        # Log a warning but proceed with the call
         if missing_params:
-            response = f"To use the {automation.name} automation, the following required parameters are missing:\n"
-            for param in missing_params:
-                response += f"- {param}: {automation.parameters[param]}\n"
-            return response
+            warnings = f"Note: Some recommended parameters for {automation.name} are missing: {', '.join(missing_params)}"
+            logger.warning(warnings)
         
         # Execute the automation with the correct call type
         execution_result = self.execute_automation(

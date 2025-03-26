@@ -201,35 +201,18 @@ class DataSourceService:
                 
                 params[param] = value.strip()
         
-        # Check if required parameters are provided
+        # Parameters are optional - we'll show a warning but still proceed
         missing_params = []
         for param, desc in datasource.parameters.items():
             if "Required" in desc and param not in params:
                 missing_params.append(param)
         
+        # Log a warning but proceed with the call
+        from datetime import datetime
+        
         if missing_params:
-            response = f"To query {datasource.name}, the following required parameters are missing:\n"
-            for param in missing_params:
-                response += f"- {param}: {datasource.parameters[param]}\n"
-            
-            # Format as structured response with logs
-            from datetime import datetime
-            result = {
-                'status': 'error',
-                'message': response,
-                'logs': [{
-                    'timestamp': datetime.now().isoformat(),
-                    'level': 'error',
-                    'message': f"Missing required parameters: {', '.join(missing_params)}"
-                }],
-                'raw_response': None,
-                'datasource': {
-                    'name': datasource.name,
-                    'id': str(datasource.id),
-                    'endpoint': datasource.endpoint
-                }
-            }
-            return result
+            warnings = f"Note: Some recommended parameters for {datasource.name} are missing: {', '.join(missing_params)}"
+            logger.warning(warnings)
         
         # Execute the query with datasource info
         datasource_info = {
