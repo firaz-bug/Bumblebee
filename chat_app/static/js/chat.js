@@ -535,9 +535,8 @@ function renderIncidentsList(incidents) {
     incidents.forEach(incident => {
         html += `
             <div class="incident-item" data-id="${incident.id}">
-                <div class="incident-severity ${incident.severity}">${incident.severity}</div>
-                <div class="incident-title">${incident.title}</div>
-                <div class="incident-status ${incident.status.toLowerCase().replace(' ', '-')}">${incident.status}</div>
+                <div class="incident-severity ${incident.priority}">${incident.priority}</div>
+                <div class="incident-title">${incident.incident_number}: ${incident.short_description}</div>
             </div>
         `;
     });
@@ -561,29 +560,16 @@ function showIncidentDetails(incident) {
 
     currentIncidentId = incident.id;
 
-    // Prepare status options
-    const statusOptions = ['Open', 'In Progress', 'Resolved'].map(status => {
-        const value = status.toLowerCase().replace(' ', '-');
-        const selected = (incident.status.toLowerCase().replace(' ', '-') === value) ? 'selected' : '';
-        return `<option value="${value}" ${selected}>${status}</option>`;
-    }).join('');
-
     // Format created and updated dates
     const createdDate = new Date(incident.created_at).toLocaleString();
     const updatedDate = new Date(incident.updated_at).toLocaleString();
 
     // Build the HTML for the details section
     let html = `
-        <h3>${incident.title}</h3>
+        <h3>${incident.incident_number}: ${incident.short_description}</h3>
         <div class="incident-detail-row">
-            <span class="detail-label">Severity:</span>
-            <span class="detail-value ${incident.severity}">${incident.severity}</span>
-        </div>
-        <div class="incident-detail-row">
-            <span class="detail-label">Status:</span>
-            <select id="incident-status" class="status-select ${incident.status.toLowerCase().replace(' ', '-')}">
-                ${statusOptions}
-            </select>
+            <span class="detail-label">Priority:</span>
+            <span class="detail-value ${incident.priority}">${incident.priority}</span>
         </div>
         <div class="incident-detail-row">
             <span class="detail-label">Created:</span>
@@ -595,7 +581,7 @@ function showIncidentDetails(incident) {
         </div>
         <div class="incident-description">
             <span class="detail-label">Description:</span>
-            <p>${incident.description}</p>
+            <p>${incident.long_description}</p>
         </div>
     `;
 

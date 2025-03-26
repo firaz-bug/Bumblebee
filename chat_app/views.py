@@ -435,7 +435,7 @@ def incident_detail(request, incident_id):
         response_data = serializer.data
         
         # Find related automations based on incident description
-        automation_ids = vector_store.recommend_automations(incident.description)
+        automation_ids = vector_store.recommend_automations(incident.long_description)
         if automation_ids:
             recommended_automations = Automation.objects.filter(id__in=automation_ids)
             automation_serializer = AutomationSerializer(recommended_automations, many=True)
@@ -444,7 +444,7 @@ def incident_detail(request, incident_id):
             response_data['recommended_automations'] = []
             
         # Find related dashboards based on incident description
-        dashboard_ids = vector_store.recommend_dashboards(incident.description)
+        dashboard_ids = vector_store.recommend_dashboards(incident.long_description)
         if dashboard_ids:
             recommended_dashboards = Dashboard.objects.filter(id__in=dashboard_ids)
             dashboard_serializer = DashboardSerializer(recommended_dashboards, many=True)
@@ -455,14 +455,9 @@ def incident_detail(request, incident_id):
         return Response(response_data)
     
     elif request.method == 'PUT':
-        # For updating status with comments
-        if 'status' in request.data:
-            incident.status = request.data['status']
-            
-            # Add comments if provided
-            if 'comments' in request.data:
-                incident.comments = request.data['comments']
-                
+        # For updating with comments
+        if 'comments' in request.data:
+            incident.comments = request.data['comments']
             incident.save()
             serializer = IncidentSerializer(incident)
             return Response(serializer.data)
