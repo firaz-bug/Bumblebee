@@ -81,6 +81,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            height: 112%;
         }
 
         .recommendations-column {
@@ -100,8 +101,8 @@
 
         /* Incidents column sections */
         .incident-details {
-            height: 40%;
-            padding: 1rem;
+            height: 37%;
+            padding: 0.6rem;
             border-bottom: 1px solid var(--color-border);
             overflow-y: auto;
         }
@@ -143,6 +144,7 @@
             border-bottom: 1px solid var(--color-border);
             overflow-y: auto;
             padding-right:0px;
+            padding-top: 15px;
         }
 
         /* Items styling */
@@ -237,7 +239,7 @@
 
         .conversations-sidebar {
             width: 40%;
-            border-right: 1px solid var(--color-border);
+            border: 1px solid var(--color-border);
             display: flex;
             flex-direction: column;
             height: 93%;
@@ -284,7 +286,7 @@
         }
 
         .chat-header {
-            padding: 1rem;
+            padding: 0.45rem;
             border-bottom: 1px solid var(--color-border);
             display: flex;
             justify-content: space-between;
@@ -383,7 +385,7 @@
 
         .modal-content {
             background-color: #fefefe;
-            margin: 15% auto;
+            /* margin: 15% auto; */
             padding: 20px;
             border: 1px solid #888;
             width: 80%;
@@ -495,7 +497,7 @@
         <!-- Left column for incidents -->
         <aside class="incidents-column">
             <div class="incidents-header">
-                <h1 class="incidents-title">Incidents</h1>
+                <h1 class="incidents-title">Incident Details</h1>
             </div>
 
             <!-- Selected incident details section (25% height) -->

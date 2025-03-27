@@ -957,20 +957,20 @@ function updateIncidentsSummary(incidents) {
         <div class="summary-content">
             <div class="summary-stats">
                 <div class="severity-item high">
-                    <span>High Priority</span>
-                    <span>${highPriorityIncidents}</span>
+                    <span>High Priority &nbsp</span>
+                    <span>(${highPriorityIncidents})</span>
                 </div>
                 <div class="severity-item medium">
-                    <span>Medium Priority</span>
-                    <span>${mediumPriorityIncidents}</span>
+                    <span>Medium Priority &nbsp</span>
+                    <span>(${mediumPriorityIncidents})</span>
                 </div>
                 <div class="severity-item low">
-                    <span>Low Priority</span>
-                    <span>${lowPriorityIncidents}</span>
+                    <span>Low Priority &nbsp</span>
+                    <span>(${lowPriorityIncidents})</span>
                 </div>
-                <div class="severity-item">
-                    <span>Total</span>
-                    <span>${totalIncidents}</span>
+                <div class="severity-item total">
+                    <span>Total &nbsp</span>
+                    <span>(${totalIncidents})</span>
                 </div>
             </div>
         </div>

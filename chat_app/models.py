@@ -122,11 +122,19 @@ class Incident(models.Model):
         (5, 'Closed'),
         (6, 'Cancelled'),
     ]
+
+    PRIORITY_CHOICES = [
+        ('1', 'Critical'),
+        ('2', 'High'),
+        ('3', 'Medium'),
+        ('4', 'Low'),
+        ('5', 'Very Low'),
+    ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     incident_number = models.CharField(max_length=50)
     sys_id = models.CharField(max_length=50, blank=True, null=True)
-    priority = models.CharField(max_length=20)
+    priority = models.CharField(choices=PRIORITY_CHOICES, default=5, max_length=20)
     short_description = models.CharField(max_length=255)
     long_description = models.TextField()
     state = models.IntegerField(choices=STATE_CHOICES, default=1)

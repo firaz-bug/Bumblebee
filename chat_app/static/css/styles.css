@@ -46,6 +46,10 @@
     padding: 0;
 }
 
+/* h3 {
+    padding: 10px;
+    border: 1px solid #000;
+} */
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     color: var(--color-text);
@@ -780,7 +784,7 @@ body {
     display: flex;
     flex-direction: column;
     border-right: 1px solid var(--color-border);
-    height: 100vh;
+    /* height: 100vh; */
     overflow: hidden;
     background-color: var(--color-sidebar-bg);
 }
@@ -949,14 +953,16 @@ body {
     padding: 5px;
     border-radius: 3px;
     display: inline-block;
+    width: 65px;
+    text-align: center;
 }
 
 /* Different styles for severity levels */
 .incident-severity.high { background-color: #ff4d4d; color: white; }
-.incident-severity.medium { background-color: #ffcc00; color: black; }
+.incident-severity.medium { background-color: #ffaa00; color: white; }
 .incident-severity.low { background-color: #4caf50; color: white; }
-.incident-severity.Critical { background-color: #d32f2f; }  /* Dark Red */
-.incident-severity.very-low { background-color: #8bc34a; color: black; }  /* Light Green */
+.incident-severity.Critical { background-color: #d32f2f; color: white;}  /* Dark Red */
+.incident-severity.very-low { background-color: #8bc34a; color: white; }  /* Light Green */
 
 .loading-incidents {
     font-size: 14px;
@@ -1157,6 +1163,11 @@ body {
 .severity-item.low {
     background-color: rgba(76, 175, 80, 0.1);
     color: #4caf50;
+}
+
+.severity-item.total {
+    background-color: rgba(54, 54, 54, 0.1);
+    color: #414040;
 }
 
 .ai-summary {
