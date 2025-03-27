@@ -958,11 +958,11 @@ body {
 }
 
 /* Different styles for severity levels */
-.incident-severity.high { background-color: #ff4d4d; color: white; }
-.incident-severity.medium { background-color: #ffaa00; color: white; }
-.incident-severity.low { background-color: #4caf50; color: white; }
+.incident-severity.High { background-color: #ff4d4d; color: white; }
+.incident-severity.Medium { background-color: #ffaa00; color: white; }
+.incident-severity.Low { background-color: #4caf50; color: white; }
 .incident-severity.Critical { background-color: #d32f2f; color: white;}  /* Dark Red */
-.incident-severity.very-low { background-color: #8bc34a; color: white; }  /* Light Green */
+.incident-severity.Very-low { background-color: #8bc34a; color: white; }  /* Light Green */
 
 .loading-incidents {
     font-size: 14px;
@@ -1150,17 +1150,17 @@ body {
     font-size: 14px;
 }
 
-.severity-item.high {
+.severity-item.High {
     background-color: rgba(255, 82, 82, 0.1);
     color: #ff5252;
 }
 
-.severity-item.medium {
+.severity-item.Medium {
     background-color: rgba(255, 152, 0, 0.1);
     color: #ff9800;
 }
 
-.severity-item.low {
+.severity-item.Low {
     background-color: rgba(76, 175, 80, 0.1);
     color: #4caf50;
 }

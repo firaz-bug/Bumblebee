@@ -605,11 +605,33 @@ function renderIncidentsList(incidents) {
     }
 
     let html = '';
-    const priorityOrder = { "Critical": 1, "High": 2, "Medium": 3, "Low": 4, "Very Low": 5 };
+    // const priorityOrder = { 1:"Critical", 2:"High", 3:"Medium", 4:"Low", 5:"Very Low" };
 
-    // Sort incidents by priority
-    incidents.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+    // // Sort incidents by priority
+    // incidents.sort((a, b) => {
+    //     const priorityA = priorityOrder[a.priority] || Number.MAX_SAFE_INTEGER;
+    //     const priorityB = priorityOrder[b.priority] || Number.MAX_SAFE_INTEGER;
 
+    // });
+
+    incidents.forEach(incident => {
+        if (typeof incident.priority === 'number') {
+            const priorityMap = {
+                1: 'Critical',
+                2: 'High',
+                3: 'Medium',
+                4: 'Low',
+                5: 'Very Low'
+            };
+            incident.priority = priorityMap[incident.priority] || 'Unknown';
+        }
+    });
+    const priorityOrder = { 'Critical': 1, 'High': 2, 'Medium': 3, 'Low': 4, 'Very Low': 5 };
+    incidents.sort((a, b) => {
+        const priorityA = priorityOrder[a.priority] || Number.MAX_SAFE_INTEGER;
+        const priorityB = priorityOrder[b.priority] || Number.MAX_SAFE_INTEGER;
+        return priorityA - priorityB;
+    });
     incidents.forEach(incident => {
         html += `
             <div class="incident-item" data-id="${incident.id}">
@@ -946,9 +968,9 @@ function updateIncidentsSummary(incidents) {
     if (!summaryContainer) return;
 
     // Count incidents by priority
-    let highPriorityIncidents = incidents.filter(inc => inc.priority && inc.priority.toLowerCase() === 'high').length;
-    let mediumPriorityIncidents = incidents.filter(inc => inc.priority && inc.priority.toLowerCase() === 'medium').length;
-    let lowPriorityIncidents = incidents.filter(inc => inc.priority && inc.priority.toLowerCase() === 'low').length;
+    let highPriorityIncidents = incidents.filter(inc => inc.priority && (inc.priority === "Critical" || inc.priority === "High")).length;
+    let mediumPriorityIncidents = incidents.filter(inc => inc.priority && inc.priority === "Medium").length;
+    let lowPriorityIncidents = incidents.filter(inc => inc.priority && (inc.priority === "Low" || inc.priority === "Very Low")).length;
     let totalIncidents = incidents.length;
 
     // Create the HTML for the incident summary section
@@ -956,15 +978,15 @@ function updateIncidentsSummary(incidents) {
         <h3>Incidents Overview</h3>
         <div class="summary-content">
             <div class="summary-stats">
-                <div class="severity-item high">
+                <div class="severity-item High">
                     <span>High Priority &nbsp</span>
                     <span>(${highPriorityIncidents})</span>
                 </div>
-                <div class="severity-item medium">
+                <div class="severity-item Medium">
                     <span>Medium Priority &nbsp</span>
                     <span>(${mediumPriorityIncidents})</span>
                 </div>
-                <div class="severity-item low">
+                <div class="severity-item Low">
                     <span>Low Priority &nbsp</span>
                     <span>(${lowPriorityIncidents})</span>
                 </div>
@@ -1446,7 +1468,7 @@ function updateRecommendedDashboards(dashboards) {
         html += `
             <div class="dashboard-item recommended">
                 <div class="dashboard-name">${dashboard.name}</div>
-                <div class="dashboard-description">${dashboard.description}</div>
+            
                 <a href="${dashboard.link}" target="_blank" class="dashboard-link">Open Dashboard <i data-feather="external-link"></i></a>
             </div>
         `;
@@ -1473,7 +1495,6 @@ function renderDashboardsList(dashboards) {
         html += `
             <div class="dashboard-item">
                 <div class="dashboard-name">${dashboard.name}</div>
-                <div class="dashboard-description">${dashboard.description}</div>
                 <a href="${dashboard.link}" target="_blank" class="dashboard-link">Open Dashboard <i data-feather="external-link"></i></a>
             </div>
         `;

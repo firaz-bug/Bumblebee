@@ -124,11 +124,11 @@ class Incident(models.Model):
     ]
 
     PRIORITY_CHOICES = [
-        ('1', 'Critical'),
-        ('2', 'High'),
-        ('3', 'Medium'),
-        ('4', 'Low'),
-        ('5', 'Very Low'),
+        (1,'Critical'),
+        (2,'High'),
+        (3,'Medium'),
+        (4,'Low'),
+        (5,'Very Low'),
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
