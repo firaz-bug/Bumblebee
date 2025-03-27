@@ -1,0 +1,43 @@
+#Issue
+
+If any of the following issues are being experienced:
+ * Application logs are missing for a specific period.
+ * Debug logs are unavailable in production.
+ * Logs are not appearing in real-time in the ELK stack.
+ * Logging pipeline latency issues observed.
+
+#Environment
+
+ * Affected Applications: Web-based applications, API services, backend processing systems
+ * Operating Systems: Linux (RHEL, Ubuntu), Windows Server
+ * Logging Stack: ELK, Splunk, Fluentd
+
+#Cause
+
+ * Log collection agent stopped or crashed (e.g., Filebeat, Fluentd, Splunk Forwarder).
+ * High ingestion load on the logging pipeline causing delays.
+ * Incorrect log level configuration (debug logs disabled in production).
+ * Network latency between log source and ingestion system.
+ * Log indexing issues in Elasticsearch or Splunk.
+
+#Resolution 
+
+1. Verify the Log Source:
+ * Check if the application is writing logs to the expected file/directory.
+ * Run: tail -f /var/log/app.log to confirm log generation.
+
+2. Check Log Forwarder Status:
+ * For ELK: systemctl status filebeat (restart if stopped).
+ * For Splunk: splunk status and restart if needed.
+
+3. Check Log Ingestion Pipeline:
+ * Verify if Logstash, Fluentd, or other aggregators are running.
+ * Check Logstash queue: curl -XGET 'http://localhost:9600/_node/stats/pipeline'
+
+4. Review Network and Load Issues:
+ * Check network latency to the logging server: ping <logging-server>
+ * Ensure log ingestion services have enough resources (top, df -h)
+
+5. Validate Log Configuration:
+ * Ensure logging levels are set correctly (INFO, DEBUG, ERROR).
+ * If using Kubernetes, check container logs: kubectl logs <pod_name>.
